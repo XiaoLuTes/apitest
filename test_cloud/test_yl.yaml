@@ -1,0 +1,64 @@
+all:
+  headers:  &headers
+   Content-Type: application/json;charset=UTF-8
+   x-DeviceInfo: 1|172.16.50.15|1|9.5.0|samsung|SM-G977N|4B4FFE68E3590F2A4E1F5B298867EBF1|02-00-00-00-00-00|android 7.1.2|1440X2560|zh|||
+   Authorization: Basic cGg1OjE1MzQ3NzEyNzc1Okw5UXlxdGp1fDF8MXwxNjc2MDkzNzAzMzc4fGtMaEk4OGdPSFpDYTg5LlJ1cUNXNXd3TFlSNzJCbDhjVWk2dFVWYUNZU19WcDRQUWN0c0NLVUxZaFRzTjNkWjNmRjhMck9MT2I0LnRmM0pMWGVhbVpiN1NnRHU5M1cyczZ1OGdWblM5Lm5ma0lvNFVWekJiQ0k3cjIuWnJfa2g3U1RQR2lvS0RkekFGNm9IM1BXRmIybEFBd08xc1FNbk4yX3RmWmdOYjQ3MC0=
+  url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/adapter/hcy/group
+
+cloud:
+  - name: 创建家庭云-冒烟
+    headers: *headers
+    method: post
+    url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/hcy/family/adapter/andAlbum/openApi/createFamilyCloud
+    data:
+      commonAccountInfo:
+          account: 15347712775
+          accountType: 1
+      cloudName: 333
+      cloudType: 1
+      cloudDesc: 123
+    extract:
+      cloudID: $.cloudID
+    validata:
+      result.resultCode: 0
+  -
+    name: 创建家庭云文档目录-冒烟
+    headers: *headers
+    method: post
+    url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/hcy/family/adapter/andAlbum/openApi/createCloudDocV2
+    data:
+      cloudID: ${cloudID}
+      commonAccountInfo:
+        account: 15347712775
+        accountType: 1
+      docLibName: python_test
+    validata:
+  -
+    name: （查询内容列表）用于家庭云成员查询家庭云下的文档目录V4
+    headers: *headers
+    method: post
+    url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/hcy/family/adapter/andAlbum/openApi/queryContentListV4
+    data:
+          catalogSortType: 0
+          catalogType: 3
+          cloudID: ${cloudID}
+          cloudType: 1
+          commonAccountInfo:
+            account: 15347712775
+            accountType: 1
+          contentSortType: 0
+          pageInfo:
+            objectID: 0
+            pageNum: 1
+            pageSize: 50
+          sortDirection: 1
+  -
+    name: 解散家庭云-冒烟
+    headers: *headers
+    method: post
+    url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/hcy/family/adapter/andAlbum/openApi/deleteFamilyCloud
+    data:
+      cloudID: ${cloudID}
+      commonAccountInfo:
+          account: 15347712775
+          accountType: 1

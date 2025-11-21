@@ -1,0 +1,36 @@
+headers:
+   Content-Type: application/json;charset=UTF-8
+   x-DeviceInfo: 1|172.16.50.15|1|9.5.0|samsung|SM-G977N|4B4FFE68E3590F2A4E1F5B298867EBF1|02-00-00-00-00-00|android 7.1.2|1440X2560|zh|||
+   Authorization: Basic bW9iaWxlOjE1MzQ3NzEyNzc1OkVIcTJaMHJUfDF8MXwxNjc5MDQwMDUzMDIxfFRMVl9YMDdHMkp6QnpCM2FpWDlDV04ud0hfbEhXWWVKRGVudVVOb2h5RFA0YmdLblZ6M2VJMUJUMkJnRUV2YzVzWlA3RUNicmNmQzRfSE9iMmVZQlV3dHk4amVNSWJmcXJ2bFBPbWRIc0kuZ1Nsekl4QlVfR2NncDZDNE0yWXdDdzBaOERqTFpwOTE4MExxeVVudGszRFFmRHhVVWFyMXJiQV9TeUM2RnRPay0=
+url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/adapter/hcy/group
+headers2:
+   Content-Type: application/json;charset=UTF-8
+   x-DeviceInfo: 1|172.16.50.15|1|9.5.0|samsung|SM-G977N|4B4FFE68E3590F2A4E1F5B298867EBF1|02-00-00-00-00-00|android 7.1.2|1440X2560|zh|||
+   Authorization: Basic bW9iaWxlOjE1MzQ3NzEyNzc1OkVIcTJaMHJUfDF8MXwxNjc5MDQwMDUzMDIxfFRMVl9YMDdHMkp6QnpCM2FpWDlDV04ud0hfbEhXWWVKRGVudVVOb2h5RFA0YmdLblZ6M2VJMUJUMkJnRUV2YzVzWlA3RUNicmNmQzRfSE9iMmVZQlV3dHk4amVNSWJmcXJ2bFBPbWRIc0kuZ1Nsekl4QlVfR2NncDZDNE0yWXdDdzBaOERqTFpwOTE4MExxeVVudGszRFFmRHhVVWFyMXJiQV9TeUM2RnRPay0=
+   API-VERSION: v3
+headers3:
+   Content-Type: application/json;charset=UTF-8
+   x-DeviceInfo: 1|172.16.50.15|1|9.5.1|samsung|SM-G977N|4B4FFE68E3590F2A4E1F5B298867EBF1|02-00-00-00-00-00|android 7.1.2|1440X2560|zh|||
+   Authorization: Basic bW9iaWxlOjE1MzQ3NzEyNzc1OkVIcTJaMHJUfDF8MXwxNjc5MDQwMDUzMDIxfFRMVl9YMDdHMkp6QnpCM2FpWDlDV04ud0hfbEhXWWVKRGVudVVOb2h5RFA0YmdLblZ6M2VJMUJUMkJnRUV2YzVzWlA3RUNicmNmQzRfSE9iMmVZQlV3dHk4amVNSWJmcXJ2bFBPbWRIc0kuZ1Nsekl4QlVfR2NncDZDNE0yWXdDdzBaOERqTFpwOTE4MExxeVVudGszRFFmRHhVVWFyMXJiQV9TeUM2RnRPay0=
+   API-VERSION: v2
+url_cloud: https://miniprogram.mail.10086.cn/ecloud/yun-dev/hcy/family/adapter
+
+
+url_saas: https://miniprogram.mail.10086.cn/personal-ali-test/hcy
+url_saas_real: https://personal-pds-njs.yun.139.com/hcy
+headers_saas:
+   Content-Type: application/json;charset=UTF-8
+   Authorization: Basic bW9iaWxlOjE4MTczNjQ3OTkyOklYbFViZEQ3fDF8UkNTfDE2ODE2MjgzODQ0MDB8cmVsQjdfeHZuSG9hSHlSODdaaC50S09VTXVyTWxQMHgzSE9PT001WldTZUlTaDVMSkJvckloUzRhUnpKVjhDNjV6NkF5MnVXT2p0aUZNZnlpSmowY3lteklXdWl1R2JYTDFydjRWTUxKdTBXd3ZTNnBDYXlMdzVMcUFSQlZMc3ZzbUo5TWtOYUROQy5iT3NYdzNMYUxWUnozWmJRbjFjb3kyTGVCNkg5cl9ZLQ==
+   x-yun-api-version: v1
+headers_saas2:
+   Content-Type: application/json;charset=UTF-8
+   Authorization: Basic cGg1OjE1MzQ3NzEyNzc1Old4UDd1eUtIfDF8MXwxNjgwNzYxMzQxMTI2fFRRbEh4QVpmZy5pTGw1U2pUaUFWbWlpQW10OGVwZHBPajJVRld0VUI2Vnk1eDJpWVY0UnV3TlJ0cE1nT3lobVIuNVVNTldUa3NrSVpMTzB6SEJna3dSTjdFSmVTUHcuenE1a1pmSE1qQXc2bjFhMUM4WUlKTnJySGJnNFhJZndnWnRKTzlBeHVDSWI3cm00ZFlQdUxnZW5qejdjWG02N2lIN3hXVlI2Zy5pRS0=
+headers_saas3:
+   x-yun-user-id: "1062863335413537407"
+   x-yun-module-type: "100"
+   x-yun-api-version: "v1"
+   x-yun-app-key: "1044569828453081093|1044570515647856644"
+   x-yun-tid: "1063070196069990582"
+   x-yun-rand: "1399171676253228356"
+   x-yun-neauth-version: "1.0"
+   x-yun-neauth: 5VMMlXWE4UEBkglJsqimcIFtKReXK9OzGG9sfo51AXLuoeCXVhWKg9FHr3eB55sT3CruFac+1KatlJCEwVpfKHDm/57ZF3XZILtxUoWo3TeLfCI1jOfNNj9mDX90v4xBKiY6lhlpUwohF/x7O23vWxCa75SXatbSOu1rp2BnIYY=
