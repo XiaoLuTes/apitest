@@ -1,7 +1,6 @@
 import pytest
-import yaml_util
-import logger
-from common import yaml_util
+from common import yaml_util, logger
+
 
 @pytest.fixture(scope="session", autouse=True)   # autouse=True  自动执行
 def execute_session():

@@ -4205,3 +4205,161 @@
 [2023-03-19 14:12:52,108] [test_file.py] [WARNING] 断言类型[json_value]-->实际结果：{"success":false,"code":"04000010","message":"资源不存在","data":null} ；期望结果：{"code":"0000"} 不相符，断言失败
 [2023-03-19 14:12:52,110] [conftest.py] [INFO] =========================== 接口测试结束 ===========================
 
+[2025-11-24 10:59:19,946] [excel_read.py] [INFO] [{'case_id': 1, 'name': '获取家庭云音视频播放地址信息-冒烟', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 2, 'name': '获取家庭云音视频播放地址信息-cloudid不存在', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128222",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"1809112500","resultDesc":"系统内部错误"}}', 'extract': None, 'validata': None}, {'case_id': 3, 'name': '获取家庭云音视频播放地址信息-cloudid入参为空', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"1809111400","resultDesc":"家庭云ID不能为空"}}', 'extract': None, 'validata': None}, {'case_id': 4, 'name': '获取家庭云音视频播放地址信息-cloudid入参为特殊字符', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "@@@",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"1809112500","resultDesc":"系统内部错误"}}', 'extract': None, 'validata': None}, {'case_id': 5, 'name': '获取家庭云音视频播放地址信息-contentid不存在', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I2222200420230215160140au9"\n}', 'result': '{"result":{"resultCode":"1809111402","resultDesc":"文件不存在"}}', 'extract': None, 'validata': None}, {'case_id': 6, 'name': '获取家庭云音视频播放地址信息-contentid已被删除', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au8"\n}', 'result': '{"result":{"resultCode":"1809111402","resultDesc":"文件不存在"}}', 'extract': None, 'validata': None}, {'case_id': 7, 'name': '获取家庭云音视频播放地址信息-contentid入参为特殊字符', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "@@"\n}', 'result': '{"result":{"resultCode":"1809111402","resultDesc":"文件不存在"}}', 'extract': None, 'validata': None}, {'case_id': 8, 'name': '获取家庭云音视频播放地址信息-catalogtype为2：音乐目录', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "2",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 9, 'name': '获取家庭云音视频播放地址信息-catalogtype为3：文档目录', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "3",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 10, 'name': '获取家庭云音视频播放地址信息-catalogtype为4：头像目录', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "4",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 11, 'name': '获取家庭云音视频播放地址信息-catalogtype为5：影集目录', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "5",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 12, 'name': '获取家庭云音视频播放地址信息-catalogtype为6：杂志目录', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "6",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 13, 'name': '获取家庭云音视频播放地址信息-catalogtype为7：不存在', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "7",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 14, 'name': '获取家庭云音视频播放地址信息-catalogtype为特殊字符', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "@@",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"01000014","resultDesc":"数据格式有误"}}', 'extract': None, 'validata': None}, {'case_id': 15, 'name': '获取家庭云音视频播放地址信息-catalogtype为0：不存在', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "0",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 16, 'name': '获取家庭云音视频播放地址信息-path入参为空', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"1809111400","resultDesc":"目录全路径不为空"}}', 'extract': None, 'validata': None}, {'case_id': 17, 'name': '获取家庭云音视频播放地址信息-path入参为特殊字符', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "@@@",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 18, 'name': '获取家庭云音视频播放地址信息-path入参为其他文件path路径', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085/r411p4eyi06I0042023010411152222",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}, {'case_id': 19, 'name': '获取家庭云音视频播放地址信息-path入参不完整', 'headers': '${headers}', 'method': 'post', 'url': '/andAlbum/openApi/getFlvOnlineAddr', 'data': '{\n    "commonAccountInfo": {\n        "account": "15347712775",\n        "accountType": "1"\n    },\n    "cloudID": "864572930956976128",\n    "catalogType": "1",\n    "path": "00019700101000000001/00019700101000000085",\n    "contentID": "r411p4eyi06I00420230215160140au9"\n}', 'result': '{"result":{"resultCode":"0","resultDesc":"SUCCESS"},"presentURL":"http://demo.aiwinn.com:50312/hls/Faa5689bb5e70d29bc97780b2ebb61cdaf/playlist.m3u8?ci=r411p4eyi06I00420230215160140au9&fileSize=55100061","presentLURL":null,"presentHURL":null,"duration":null}', 'extract': None, 'validata': None}]
+[2025-11-24 10:59:19,963] [conftest.py] [INFO] =========================== 接口测试开始 ===========================
+[2025-11-24 11:09:29,902] [excel_read.py] [INFO] 测试用例路径：testcase/cloud_test.xlsx
+[2025-11-24 11:09:39,268] [conftest.py] [INFO] =========================== 接口测试开始 ===========================
+[2025-11-24 11:11:06,542] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-冒烟,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:09,810] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-cloudid不存在,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128222', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:10,257] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-cloudid入参为空,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:10,669] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-cloudid入参为特殊字符,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '@@@', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:11,179] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-contentid不存在,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I2222200420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:11,593] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-contentid已被删除,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au8'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:12,029] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-contentid入参为特殊字符,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': '@@'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:12,465] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为2：音乐目录,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '2', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:12,944] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为3：文档目录,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '3', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:13,366] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为4：头像目录,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '4', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:13,836] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为5：影集目录,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '5', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:14,359] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为6：杂志目录,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '6', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:14,838] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为7：不存在,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '7', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:15,372] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为特殊字符,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '@@', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:15,842] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-catalogtype为0：不存在,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '0', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I00420230104111537ah1', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:16,336] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-path入参为空,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:16,808] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-path入参为特殊字符,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '@@@', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:17,288] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-path入参为其他文件path路径,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085/r411p4eyi06I0042023010411152222', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:17,922] [test_file.py] [INFO] 用例名称：获取家庭云音视频播放地址信息-path入参不完整,请求方式：post,请求url：https://test-admin.gsrtech.com//andAlbum/openApi/getFlvOnlineAddr,请求参数：{'commonAccountInfo': {'account': '15347712775', 'accountType': '1'}, 'cloudID': '864572930956976128', 'catalogType': '1', 'path': '00019700101000000001/00019700101000000085', 'contentID': 'r411p4eyi06I00420230215160140au9'},返回结果：<html>
+<head><title>405 Not Allowed</title></head>
+<body>
+<center><h1>405 Not Allowed</h1></center>
+<hr><center>nginx/1.27.4</center>
+</body>
+</html>
+,断言结果:未发现断言条件
+[2025-11-24 11:11:18,076] [conftest.py] [INFO] =========================== 接口测试结束 ===========================
+
