@@ -14,4 +14,3 @@ if __name__ == '__main__':
 # if __name__ == '__main__':
 #     pytest.main()
 #     os.system("allure generate ./reports/temp -o ./reports/allure-reports --clean")
-# # allure报告,本地调试
