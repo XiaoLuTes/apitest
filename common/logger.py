@@ -6,7 +6,7 @@ from config.setting import setting
 
 def setup_logger():
     # 创建日志目录
-    log_dir = os.path.join(setting.REPORT_PATH, "../../apitest/reports/logs")
+    log_dir = os.path.join(setting.REPORT_PATH, "../../api/reports/logs")
     os.makedirs(log_dir, exist_ok=True)
 
     # 创建日志文件名（带时间戳）
