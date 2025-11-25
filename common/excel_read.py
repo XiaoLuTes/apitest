@@ -37,7 +37,6 @@ class Excel:
     @staticmethod
     def excel_write(filename, row, column, result):
         # 写入excel
-        # data = Excel().excel_read(filename)
         file = openpyxl.load_workbook(filename)
         sheet_names = file.sheetnames
         for sheet in sheet_names:

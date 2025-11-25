@@ -1,112 +1,224 @@
 import json
 import re
+import allure
 import jsonpath
-import pytest
 from common import yaml_util
 from common.logger import logger
 
 
 class VariableHandle:
+    # 增加最大递归深度限制，防止死循环
+    MAX_REPLACE_DEPTH = 10
 
     @staticmethod
-    def replace_value(data):
-        """替换变量"""
-        if isinstance(data, dict) or isinstance(data, list):
-            # 传入data需要先转换为str类型才能判断$标识符以及取点
-            str_data = json.dumps(data, ensure_ascii=False)
-        else:
-            str_data = str(data)
-        if '$' in data:
-            # 判断$提取标识符是否在data里面
-            for a in range(1, str_data.count("$") + 1):
-                # for in range默认从0开始计数，所以此处前面起始值为1，左开右合，所以右边需要+1
-                length = len(str_data)
-                start_index = str_data.index('${')
-                end_index = str_data.index('}', start_index, length + 1)
-                replace_data = str_data[start_index + 2:end_index]
-                # 需要替换的值为str_data中start_index起始标识与end_index结束标识中间的字符
-                # 因为起始标识"${"占用了两个字符，所以replace_data要从起始标识右边两个字符处开始
-                data_extract = yaml_util.read_yaml(replace_data)
-                if isinstance(data_extract, dict) or isinstance(data_extract, int):
-                    # 判断提取出的变量是否为dict类型，如果是,需要先转化为str类型才能replace替换原有值
-                    data_extract_str = json.dumps(data_extract)
-                    str_data = str_data.replace(str_data[start_index:end_index + 1], data_extract_str)
-                else:
-                    # 判断变量是否是int类型，如果是，需要转化为str类型才能replace替换原有值
-                    # 如果提取出的变量不是dict类型，需要先替换原有值
-                    str_data = str_data.replace(str_data[start_index:end_index + 1], data_extract)
-            data_dict = eval(str_data)
-            return data_dict
-            # 替换完成后用eval函数返回dict格式
-        elif isinstance(data, str):
-            # 如果data不包含$标识符，判断是否为str类型，如果是str，转化为dict返回
-            data_dict = json.loads(data)
-            return data_dict
-        else:
+    def replace_value(data, current_depth=0):
+        """
+        递归替换变量（支持嵌套变量）
+        :param data: 原始数据（str/dict/list/数字等）
+        :param current_depth: 当前递归深度
+        :return: 替换后的原始类型数据（dict/list/str/int等）
+        """
+        # 递归深度保护
+        if current_depth > VariableHandle.MAX_REPLACE_DEPTH:
+            logger.warning(f"变量替换递归深度超过上限({VariableHandle.MAX_REPLACE_DEPTH})，可能存在循环引用")
             return data
+        # 空值
+        if data is None:
+            return None
+        # 1. 处理字典类型：递归替换每个value
+        if isinstance(data, dict):
+            new_dict = {}
+            for key, value in data.items():
+                new_dict[key] = VariableHandle.replace_value(value, current_depth + 1)
+            return new_dict
+        # 2. 处理列表类型：递归替换每个元素
+        if isinstance(data, list):
+            new_list = []
+            for item in data:
+                new_list.append(VariableHandle.replace_value(item, current_depth + 1))
+            return new_list
+        # 3. 处理字符串类型：替换${变量}
+        if isinstance(data, str):
+            str_data = data
+            # 循环替换所有${变量}，直到没有匹配项
+            while re.search(r'\$\{([^}]+)}', str_data):
+                # 匹配第一个${变量}
+                match = re.search(r'\$\{([^}]+)}', str_data)
+                if not match:
+                    break
 
-    @staticmethod
-    def extract_value(req, file):
-        """提取传入file所有的key值"""
-        file_keys = file.keys()
-        if "extract" in file_keys:
-            if isinstance(file['extract'], str):
-                extract = json.loads(file['extract'])
-            else:
-                extract = file['extract']
-                # 判断传入extract数据的数据格式
-            if extract is not None:
-                # 判断extract传入是否为空（为空则直接跳过）
-                for key, value in extract.items():
-                    if ".*?" in value or ".+?" in value:
-                        yaml_util.write_yaml({key: re.search(req.text, key)})
-                        # 正则提取
-                    elif "$." in value:
-                        revalue = jsonpath.jsonpath(req.json(), value)
-                        yaml_util.write_yaml({key: revalue[0]})
-                    # json提取
+                full_match = match.group(0)  # 例如 ${headers2}
+                var_name = match.group(1)    # 例如 headers2
+
+                try:
+                    # 从yaml读取变量值
+                    var_value = yaml_util.read_yaml(var_name)
+                    if var_value is None:
+                        logger.warning(f"变量 {var_name} 未找到，保留原字符串")
+                        break
+
+                    # 递归替换变量值内部的嵌套变量（关键！）
+                    var_value = VariableHandle.replace_value(var_value, current_depth + 1)
+
+                    # 替换：根据变量类型决定是否转字符串
+                    if isinstance(var_value, (dict, list)):
+                        # 字典/列表转JSON字符串后替换（但最终会在外部还原为字典）
+                        replace_str = json.dumps(var_value, ensure_ascii=False)
                     else:
-                        print("没有正则表达式或json提取表达式")
-            else:
-                pass
-        else:
-            pass
+                        replace_str = str(var_value)
+
+                    # 执行断言
+                    str_data = str_data.replace(full_match, replace_str, 1)
+                    logger.debug(f"替换变量 {var_name} -> {replace_str[:50]}...")
+
+                except KeyError as e:
+                    logger.error(f"变量 {var_name} 不存在: {e}")
+                    break
+                except Exception as e:
+                    logger.error(f"替换变量 {var_name} 失败: {e}", exc_info=True)
+                    break
+
+            # 尝试将字符串还原为字典/列表（针对headers这类JSON字符串）
+            try:
+                # 仅当字符串是JSON格式时才解析为字典/列表
+                if str_data.startswith(('{', '[')) and str_data.endswith(('}', ']')):
+                    return json.loads(str_data)
+                else:
+                    return str_data
+            except json.JSONDecodeError:
+                # 不是JSON格式，返回原始字符串
+                return str_data
+
+        # 4. 其他类型（数字/布尔）：直接返回
+        return data
 
     @staticmethod
-    def assert_validata(req, file):
-        """提取断言"""
-        file_keys = file.keys()
-        if 'validata' in file_keys and file['validata'] is not None:
-            # 判断是否存在断言validata关键字且断言条件不为空
-            if isinstance(file['validata'], str):
-                validata = json.loads(file['validata'])
+    @allure.step(f"提取变量")
+    def extract_value(req, extract):
+        """提取变量并写入yaml"""
+        if extract is None or extract == "":
+            return
+        try:
+            # 解析extract为字典
+            extract_dict = {}
+            if isinstance(extract, str):
+                # 清理格式
+                cleaned_extract = extract.strip().replace('\n', '').replace('\r', '')
+                # 处理非标准JSON格式（如 {key:$.data.token}）
+                if cleaned_extract.startswith('{') and cleaned_extract.endswith('}'):
+                    cleaned_extract = (cleaned_extract.replace("'", '"').replace(':', '":"').
+                                       replace('{', '{"').replace('}', '"}'))
+                    # 修复JSON格式（简单处理）
+                    cleaned_extract = re.sub(r'":\$', '":"$', cleaned_extract)
+                try:
+                    extract_dict = json.loads(cleaned_extract)
+                except json.JSONDecodeError:
+                    logger.error(f"解析extract失败: {cleaned_extract}")
+                    # 手动解析简单键值对
+                    content = cleaned_extract.strip('{}').strip()
+                    if ':' in content:
+                        key, value = content.split(':', 1)
+                        extract_dict = {key.strip(): value.strip()}
             else:
-                validata = file['validata']
-                # 判断传入validata的格式，转换为json格式
-            result = []
-            for check_key, check_value in validata.items():
-                # 提取断言的参数和值
-                key = '$.' + check_key + ''
-                www = jsonpath.jsonpath(req.json(), key)
-                # 参数使用jsonpath提取
-                value = [str(check_value)]
-                # 提取返回中参数对应的值
-                if value == www:
-                    result.append(True)
+                extract_dict = extract
+            # 提取变量并写入yaml
+            for key, expr in extract_dict.items():
+                if not expr:
+                    continue
+                # 正则提取
+                if ".*?" in expr or ".+?" in expr:
+                    match = re.search(expr, req.text)
+                    if match:
+                        yaml_util.write_yaml({key: match.group(0)})
+                        logger.info(f"正则提取成功: {key} = {match.group(0)}")
+                    else:
+                        logger.warning(f"正则 {expr} 未匹配到内容")
+                # JSONPath提取
+                elif "$." in expr:
+                    result = jsonpath.jsonpath(req.json(), expr)
+                    if result and len(result) > 0:
+                        yaml_util.write_yaml({key: result[0]})
+                        logger.info(f"JSONPath提取成功: {key} = {result[0]}")
+                    else:
+                        logger.warning(f"JSONPath {expr} 未提取到内容")
                 else:
-                    result.append(False)
-                    # 判断断言是否与接口返回一致
-            if False in result:
-                error_message = '断言类型[json_value]-->实际结果：%s ；期望结果：%s 不相符，断言失败' \
-                                % (req.text, file['validata'])
-                logger.warning(error_message)
-                pytest.fail(error_message, False)
-                # 标记用例fail,继续执行其他用例
-                return error_message
+                    logger.warning(f"无效的提取表达式: {expr}")
+        except Exception as e:
+            logger.error(f"提取变量失败: {e}", exc_info=True)
+
+    @staticmethod
+    @allure.step(f"断言验证")
+    def assert_validata(req, validata):
+        """断言验证（失败时抛出异常标记用例失败）"""
+        if validata is None or validata == "":
+            logger.info("无断言内容，跳过断言")
+            return []
+        try:
+            # 解析断言为字典
+            validata_dict = {}
+            if isinstance(validata, str):
+                cleaned_validata = validata.strip().replace('\n', '').replace('\r', '')
+                try:
+                    validata_dict = json.loads(cleaned_validata)
+                except json.JSONDecodeError:
+                    logger.error(f"解析断言失败: {cleaned_validata}")
+                    # 手动解析
+                    if cleaned_validata.startswith('{') and cleaned_validata.endswith('}'):
+                        content = cleaned_validata.strip('{}').strip()
+                        if ':' in content:
+                            key, value = content.split(':', 1)
+                            validata_dict = {key.strip(): value.strip()}
             else:
-                pass_message = '断言相符，断言通过'
-                logger.info(pass_message)
-                return pass_message
-        else:
-            message = '未发现断言条件'
-            return message
+                validata_dict = validata
+            if not isinstance(validata_dict, dict):
+                logger.error(f"断言必须是字典类型，实际: {type(validata_dict)}")
+                raise AssertionError(f"断言格式错误：必须是字典类型，实际为{type(validata_dict)}")
+            # 执行断言
+            results = []
+            failed_details = []  # 收集所有失败的断言详情
+            for jsonpath_expr, expected_value in validata_dict.items():
+                actual_values = jsonpath.jsonpath(req.json(), jsonpath_expr)
+                actual_value = actual_values[0] if (actual_values and len(actual_values) > 0) else None
+                # 断言结果（统一转字符串比较，避免类型问题）
+                check_result = str(actual_value) == str(expected_value)
+                results.append({
+                    "key": jsonpath_expr,
+                    "expected": expected_value,
+                    "actual": actual_value,
+                    "check_result": check_result
+                })
+                if check_result:
+                    msg = f"断言成功: {jsonpath_expr} = {actual_value}"
+                    logger.info(msg)
+                    allure.attach(f"断言成功", msg)
+                else:
+                    # 构建失败信息
+                    fail_msg = (
+                        f"断言项[{jsonpath_expr}]失败 | "
+                        f"期望值: {expected_value} (类型: {type(expected_value).__name__}) | "
+                        f"实际值: {actual_value} (类型: {type(actual_value).__name__})"
+                    )
+                    logger.error(fail_msg)
+                    failed_details.append(fail_msg)
+            # 存在失败断言则抛出异常，触发pytest用例失败
+            if failed_details:
+                # 构建汇总失败信息
+                fail_summary = (
+                    f"\n========== 断言失败汇总 ==========\n"
+                    f"总计失败断言数: {len(failed_details)}\n"
+                    + "\n".join([f"{i+1}. {msg}" for i, msg in enumerate(failed_details)])
+                    + "\n=================================="
+                )
+                logger.error(fail_summary)
+                allure.attach(f"断言失败", fail_summary)
+                raise AssertionError(fail_summary)
+            logger.info("所有断言验证通过")
+            return results
+        except AssertionError:
+            # 主动抛出的断言异常，直接向上传递（不捕获，让pytest处理）
+            raise
+        except Exception as e:
+            # 其他异常（如解析失败）也标记为断言失败
+            error_msg = f"断言执行异常: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            raise AssertionError(error_msg)
