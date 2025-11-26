@@ -46,31 +46,25 @@ class VariableHandle:
                 match = re.search(r'\$\{([^}]+)}', str_data)
                 if not match:
                     break
-
                 full_match = match.group(0)  # 例如 ${headers2}
                 var_name = match.group(1)    # 例如 headers2
-
                 try:
                     # 从yaml读取变量值
                     var_value = yaml_util.read_yaml(var_name)
                     if var_value is None:
-                        logger.warning(f"变量 {var_name} 未找到，保留原字符串")
+                        logger.info(f"变量 {var_name} 未找到，保留原字符串")
                         break
-
                     # 递归替换变量值内部的嵌套变量（关键！）
                     var_value = VariableHandle.replace_value(var_value, current_depth + 1)
-
                     # 替换：根据变量类型决定是否转字符串
                     if isinstance(var_value, (dict, list)):
                         # 字典/列表转JSON字符串后替换（但最终会在外部还原为字典）
                         replace_str = json.dumps(var_value, ensure_ascii=False)
                     else:
                         replace_str = str(var_value)
-
                     # 执行断言
                     str_data = str_data.replace(full_match, replace_str, 1)
-                    logger.debug(f"替换变量 {var_name} -> {replace_str[:50]}...")
-
+                    logger.info(f"替换变量 {var_name} -> {replace_str[:50]}...")
                 except KeyError as e:
                     logger.error(f"变量 {var_name} 不存在: {e}")
                     break
@@ -102,23 +96,29 @@ class VariableHandle:
             # 解析extract为字典
             extract_dict = {}
             if isinstance(extract, str):
-                # 清理格式
+                # 清理格式：关键修复——替换转义双引号、多余空格
                 cleaned_extract = extract.strip().replace('\n', '').replace('\r', '')
+                # 修复双引号转义问题（"" → "）
+                cleaned_extract = cleaned_extract.replace('""', '"')
                 # 处理非标准JSON格式（如 {key:$.data.token}）
                 if cleaned_extract.startswith('{') and cleaned_extract.endswith('}'):
-                    cleaned_extract = (cleaned_extract.replace("'", '"').replace(':', '":"').
-                                       replace('{', '{"').replace('}', '"}'))
-                    # 修复JSON格式（简单处理）
-                    cleaned_extract = re.sub(r'":\$', '":"$', cleaned_extract)
+                    # 兼容无引号的key/value
+                    cleaned_extract = re.sub(r'([{,]\s*)(\w+)(\s*:)', r'\1"\2"\3', cleaned_extract)
+                    cleaned_extract = re.sub(r':\s*([^"$\s][^,}]+)', r':"\1"', cleaned_extract)
+
                 try:
                     extract_dict = json.loads(cleaned_extract)
-                except json.JSONDecodeError:
-                    logger.error(f"解析extract失败: {cleaned_extract}")
-                    # 手动解析简单键值对
+                    logger.debug(f"Extract解析成功: {extract_dict}")
+                except json.JSONDecodeError as e:
+                    logger.info(f"解析extract失败: {cleaned_extract} |错误: {str(e)},尝试降级解析")
+                    # 降级手动解析
                     content = cleaned_extract.strip('{}').strip()
                     if ':' in content:
                         key, value = content.split(':', 1)
-                        extract_dict = {key.strip(): value.strip()}
+                        extract_dict = {
+                            key.strip().strip('"').strip("'"):
+                                value.strip().strip('"').strip("'")
+                        }
             else:
                 extract_dict = extract
             # 提取变量并写入yaml

@@ -4,10 +4,20 @@ import os
 class Setting:
     def __init__(self):
         self.ENV = self._get_env_var("ENV", "测试环境")
-        self.TEST_FLIELOAD = f"testcase/test_approval.xlsx"  # excel测试用例路径
+        self.TEST_FLIELOADS = {
+            "假勤": f"testcase/test_approval.xlsx",
+            "调试": f"testcase/test_test.xlsx"
+        }
+        self.CURRENT_PROJECT = self._get_env_var("CURRENT_PROJECT", '假勤')
+        self.TEST_FLIELOAD = self.TEST_FLIELOADS[self.CURRENT_PROJECT]  # excel测试用例路径
         self.TEST_FLIELOAD_YAML = f"testcase/test_yl.yaml"  # yaml测试用例路径
         self.EXTRACTFILE = f"variable/extract.yaml"  # 临时变量文件路径
-        self.ALL_YAML = f"variable/all.yaml"  # 全局变量文件路径
+        self.ALL_YAML_ENV = {
+            "生产环境": f"variable/all_pro.yaml",
+            "预生产环境": f"variable/all_prepro.yaml",
+            "测试环境": f"variable/all.yaml"
+        }
+        self.ALL_YAML = self.ALL_YAML_ENV[self.ENV]  # 全局变量文件路径
         self.REPORT_PATH = self._get_env_var("REPORT_PATH", "reports/")  # 报告路径
         self.BASE_URLS = {
             "生产环境": "https://admin.gsrtech.com",

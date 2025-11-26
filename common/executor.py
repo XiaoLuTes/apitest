@@ -36,21 +36,24 @@ class Executor:
     def execute(self, file):
         try:
             case_id = file['case_id']
-            name = file['name']
+            name = VariableHandle.replace_value(file['name'])
+            logger.info("\n----------------------------")
+            logger.info(f"执行用例id:{case_id},用例名称：{str(name)}")
             allure.dynamic.title(name)
             method = file['method']
-            url = self.test_url + file['url']
+            url = self.test_url + VariableHandle.replace_value(file['url'])
             data = VariableHandle.replace_value(file['data'])
             headers = VariableHandle.replace_value(file['headers'])
             extract = file['extract']
-            validate = file['validata']
+            validata = VariableHandle.replace_value(file['validata'])
             if method == 'db_select':
                 self._ensure_database_connection()
-                self._db_utils.execute_query(data, validate)
+                self._db_utils.execute_query(data, validata)
             elif method == 'db_update':
                 self._ensure_database_connection()
-                self._db_utils.execute_update(data, validate)
+                self._db_utils.execute_update(data, validata)
             else:
+                logger.info(f"\n实际请求url:{url},\n实际请求参数{data}")
                 self.req = request_util.send_request(method=method, url=url, data=data, headers=headers)
                 allure.attach(body='' + url + '', name='请求路径', attachment_type=allure.attachment_type.TEXT)
                 allure.attach(body=json.dumps(headers), name='请求头', attachment_type=allure.attachment_type.JSON)
@@ -59,9 +62,8 @@ class Executor:
                 if extract:
                     VariableHandle.extract_value(self.req, extract)
                 excel_read.Excel().excel_write(self.fileload, file['case_id'] + 1, 7, self.req.text)  # 写入接口返回
-                self.validate_result = VariableHandle.assert_validata(self.req, validate)
-            logger.info(
-                f"用例id：{case_id}用例名称：{name},请求方式：{method},请求url：{url},请求参数：{data},返回结果：{self.req.text},断言结果:"
-                f"{self.validate_result}")
+                self.validate_result = VariableHandle.assert_validata(self.req, validata)
+            logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")
+            logger.info(f"测试通过")
         finally:
             self._close_database_connection()
