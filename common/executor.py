@@ -25,9 +25,10 @@ class Executor:
 
     def _close_database_connection(self):
         """关闭数据库连接"""
-        if self._db_utils:
+        if self._db_utils.connection:
             try:
-                self._db_utils.close()
+                self._db_utils.connection.close()
+                logger.info("数据库连接已关闭")
             except Exception as e:
                 logger.warning(f"关闭数据库连接时发生错误: {e}")
             finally:
@@ -48,10 +49,12 @@ class Executor:
             validata = VariableHandle.replace_value(file['validata'])
             if method == 'db_select':
                 self._ensure_database_connection()
-                self._db_utils.execute_query(data, validata)
+                self._db_utils.verify_mysql_data(data, validata)
             elif method == 'db_update':
                 self._ensure_database_connection()
-                self._db_utils.execute_update(data, validata)
+                sql_result = self._db_utils.execute_mysql_update(data)
+                if validata and str(sql_result) != validata:
+                    raise AssertionError(f"数据库更新影响行数不匹配，期望: {validata}, 实际: {sql_result}")
             else:
                 logger.info(f"\n实际请求url:{url},\n实际请求参数{data}")
                 self.req = request_util.send_request(method=method, url=url, data=data, headers=headers)
