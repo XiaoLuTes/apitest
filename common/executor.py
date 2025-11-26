@@ -38,7 +38,7 @@ class Executor:
             case_id = file['case_id']
             name = VariableHandle.replace_value(file['name'])
             logger.info("\n----------------------------")
-            logger.info(f"执行用例id:{case_id},用例名称：{str(name)}")
+            logger.info(f"执行用例:{case_id}-{str(name)}")
             allure.dynamic.title(name)
             method = file['method']
             url = self.test_url + VariableHandle.replace_value(file['url'])
