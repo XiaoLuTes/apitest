@@ -2,11 +2,11 @@ headers:
    Connection: keep-alive
    content-type: application/json
 headers_omni:
-   Authorization: Bearer ${access_token}
+   Authorization: Bearer ${access_token_omni}
    Connection: keep-alive
    content-type: application/json
 headers_admin:
-   Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX3R5cGUiOiJhZG1pbiIsInVzZXJfaWQiOjIyOCwidXNlcl9rZXkiOiJkYjIwZjc5Yy01NjRkLTRiOGUtYWY2MC05Nzc1ZGRhOGUwYmMiLCJ1c2VybmFtZSI6IuWwj-WNoiJ9.Iona6ucmb22WAmi7hBVcrzSupvOVCOUPgw5Svq3pmc-juDqDiR3-LDgsUgSjkn_kVnH7ULY8CWly-lWWdJdjlw
+   Authorization: Bearer ${access_token_admin}
    Accept: application/json, text/plain, */*
    Connection: keep-alive
 headers_user:

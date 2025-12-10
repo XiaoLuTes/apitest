@@ -3,23 +3,27 @@ headers:
   content-type: application/json
 headers_admin:
   Accept: application/json, text/plain, */*
-  Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX3R5cGUiOiJhZG1pbiIsInVzZXJfaWQiOjIyOCwidXNlcl9rZXkiOiJkYjIwZjc5Yy01NjRkLTRiOGUtYWY2MC05Nzc1ZGRhOGUwYmMiLCJ1c2VybmFtZSI6IuWwj-WNoiJ9.Iona6ucmb22WAmi7hBVcrzSupvOVCOUPgw5Svq3pmc-juDqDiR3-LDgsUgSjkn_kVnH7ULY8CWly-lWWdJdjlw
+  Authorization: Bearer ${access_token_admin}
   Connection: keep-alive
 headers_omni:
-  Authorization: Bearer ${access_token}
+  Authorization: Bearer ${access_token_omni}
   Connection: keep-alive
   content-type: application/json
 headers_user:
   Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX3R5cGUiOiJ0ZW5hbnQiLCJ1c2VyX2lkIjoyMzIsInVzZXJfa2V5IjoiODBlZmQ0ZGEtM2M5Yy00ZGNmLTg3NGMtNDdhZWEwYjE3ODg1IiwidXNlcm5hbWUiOiIxMjk4ODlAcXEuY29tIn0.y1GPZ_UYwDyjPEBCuae-qrfIo4ekolU45vFk_7si-Yyj7v4zyPEQx5xjbZeUvahKri_I_JIWNJibiWLxne-xcA
   Connection: keep-alive
   content-type: application/json
-access_token: eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX3R5cGUiOiJFbXBsb3llZSIsInVzZXJfaWQiOjQ0NSwidXNlcl9rZXkiOiI4MjhlNDQ3OC05NzIzLTQ5NjUtOTJhOS0xMzEwZjU0ZWUyNmIiLCJ1c2VybmFtZSI6IjEyM2x5QHFxLmNvbSJ9.j1YQTQ3W_lhODx1F4ncSWzyK4HsZRF0KYzypIWu6zqBMvrDVuMg5WMPABH-ONz0LTBjdXgllLMH83QfaaMnr6g
+access_token_omni: eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX3R5cGUiOiJFbXBsb3llZSIsInVzZXJfaWQiOjQ0NSwidXNlcl9rZXkiOiJiYjA0OGQ4ZS1kZjNjLTQ0MzItYmRkYy0xMWNlNjhjOWRlMWEiLCJ1c2VybmFtZSI6IjEyM2x5QHFxLmNvbSJ9.fLjrMy5ayyZ0JIxfrZyuO8nNJUS0A-ABwSZDpgO5NDvEGdwlYVFpnWjp9roHepj2EVXi0E8LmvDYZaqB8ZkZeQ
+access_token_admin: eyJhbGciOiJIUzUxMiJ9.eyJ1c2VyX3R5cGUiOiJhZG1pbiIsInVzZXJfaWQiOjIyOCwidXNlcl9rZXkiOiI2ZTQ1MzQzYi1hZDg1LTQ2MWMtYmI1Yi1jMzIyN2Q0MDQzMzkiLCJ1c2VybmFtZSI6IuWwj-WNoiJ9.JROWxjHusJGnQwUphBv2j0WHFxzw6_bYYxlGGDoYs6Lq4I9rUXWYVZuTyFz2K6VhUdiy7mBhXk1bNp7kJ3U9dw
 leaveRuleId_first: 4006
-ruleQuotaRemainingValue: 246.0
+ruleQuotaRemainingValue: 66.0
 leaveRuleTemplateSubId: 673
 enddate: '2025-11-27 13:00:00'
 leaveduration_annualleave: '12.00'
-instanceid: '1993574543771459585'
-taskid_first: '1993574546954936321'
-taskid_sec: '1993574608443432962'
-taskid_thr: '1993574619772248066'
+instanceid_reject: '1993877133713354754'
+taskid_reject: '1993877136724865025'
+instanceid_revoke: '1993877183684292609'
+instanceid_approval: '1993877254379286529'
+taskid_first: '1993877257285939202'
+taskid_sec: '1993877317994295298'
+taskid_thr: '1993877329272778754'

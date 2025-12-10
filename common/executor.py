@@ -25,7 +25,7 @@ class Executor:
 
     def _close_database_connection(self):
         """关闭数据库连接"""
-        if self._db_utils.connection:
+        if self._db_utils:
             try:
                 self._db_utils.connection.close()
                 logger.info("数据库连接已关闭")
