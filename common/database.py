@@ -38,14 +38,7 @@ class DatabaseUtils:
             raise Exception
 
     def execute_query(self, query: str, params=None) -> List[Dict[str, Any]]:
-        """
-        执行查询语句
-        args:
-            query(str): 要执行的sql语句
-            param: sql语句的参数，默认为空
-        return:
-            List[Dict[str, Any]]: 查询结果列表，每个结果都是一个字典
-        """
+        """执行查询语句"""
         try:
             if self.connection is None:
                 self.connect()
@@ -79,12 +72,7 @@ class DatabaseUtils:
 
     @allure.step("执行数据库验证")
     def verify_mysql_data(self, sql: str, expected: str):
-        """
-        执行SQL查询并验证结果
-        Args:
-            sql (str): 要执行的SQL查询语句
-            expected (str): 期望的结果，支持多种格式
-        """
+        """执行SQL查询并验证结果"""
         try:
             # 记录开始执行的日志
             logger.info(f"执行SQL验证: {sql}")
@@ -95,12 +83,10 @@ class DatabaseUtils:
             if verification_passed:
                 logger.info("数据库验证成功")
             else:
-                # 验证失败，准备错误信息
                 error_msg = f"数据库验证失败: SQL={sql}, 期望={expected}, 实际结果={result}"
                 raise AssertionError(error_msg)
 
         except TimeoutError as e:
-            # 处理超时错误
             error_msg = f"数据库验证超时: {str(e)}"
             logger.error(error_msg)
             raise
@@ -111,14 +97,7 @@ class DatabaseUtils:
             raise
 
     def parse_and_verify_expected(self, result, expected: str) -> bool:
-        """
-        解析期望结果并进行验证
-        Args:
-            result: 数据库查询结果
-            expected (str): 期望结果字符串
-        Returns:
-            bool: 验证是否通过
-        """
+        """解析期望结果并进行验证"""
         # 如果expected为空
         if expected.lower() in ["empty", "[]", "null", "none"]:
             return len(result) == 0
@@ -196,8 +175,6 @@ class DatabaseUtils:
     def execute_mysql_update(self, sql: str):
         """
         执行数据库更新操作（INSERT, UPDATE, DELETE）
-        Args:
-            sql (str): 要执行的SQL语句
         Returns:
             int: 影响的行数
         """
@@ -207,7 +184,6 @@ class DatabaseUtils:
             logger.info(f"数据库更新成功，影响行数: {affected_rows}")
             return affected_rows  # 返回影响的行数
         except TimeoutError as e:
-            # 处理超时错误
             error_msg = f"数据库更新超时: {str(e)}"
             logger.error(error_msg)
             raise

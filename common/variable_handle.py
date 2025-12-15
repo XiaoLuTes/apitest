@@ -98,7 +98,7 @@ class VariableHandle:
             if isinstance(extract, str):
                 # 清理格式：关键修复——替换转义双引号、多余空格
                 cleaned_extract = extract.strip().replace('\n', '').replace('\r', '')
-                # 修复双引号转义问题（"" → "）
+                # 处理双引号转义问题（"" → "）
                 cleaned_extract = cleaned_extract.replace('""', '"')
                 # 处理非标准JSON格式（如 {key:$.data.token}）
                 if cleaned_extract.startswith('{') and cleaned_extract.endswith('}'):

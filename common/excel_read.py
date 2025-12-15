@@ -6,7 +6,7 @@ from common.logger import logger
 class Excel:
 
     @staticmethod
-    def excel_read(fireload):
+    def read_excel(fireload):
         logger.info(f"测试用例路径：{fireload}")
         # sheet页面，row行，column列，cell格子
         file = openpyxl.load_workbook(fireload)
@@ -33,6 +33,7 @@ class Excel:
                 last_data.append(dict_data)
                 # 转换为字典形式
             return last_data
+        return None
 
     @staticmethod
     def excel_write(filename, row, column, result):

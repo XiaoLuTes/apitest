@@ -13,10 +13,9 @@ class TestFile:
     def setup_test(self):
         """测试类级别初始化"""
         self.executor = Executor()
-
         yield
 
     # excel用例执行
-    @pytest.mark.parametrize('file', excel_read.Excel().excel_read(fileload))
+    @pytest.mark.parametrize('file', excel_read.Excel().read_excel(fileload))
     def test_excel_cloud(self, file):
         self.executor.execute(file)
