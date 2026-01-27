@@ -41,9 +41,9 @@ api/
 │   └── test_yl.yaml          # 测试用例文件-yaml格式
 │
 ├── variable/                 # 变量管理类
-│   ├── all.yaml              # 全局变量
-│   ├── all_prepro.yaml       # 局部变量文件-prepro项目
-│   ├── all_pro.yaml          # 局部变量文件-pro项目
+│   ├── all.yaml              # 全局变量-测试环境
+│   ├── all_prepro.yaml       # 全局变量文件-预生产环境
+│   ├── all_pro.yaml          # 全局变量文件-生产环境
 │   └── extract.yaml          # 临时变量
 │
 ├── conftest.py               # pytest fixture配置
