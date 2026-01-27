@@ -54,7 +54,7 @@ class VariableHandle:
                     if var_value is None:
                         logger.info(f"变量 {var_name} 未找到，保留原字符串")
                         break
-                    # 递归替换变量值内部的嵌套变量（关键！）
+                    # 递归替换变量值内部的嵌套变量
                     var_value = VariableHandle.replace_value(var_value, current_depth + 1)
                     # 替换：根据变量类型决定是否转字符串
                     if isinstance(var_value, (dict, list)):
@@ -62,7 +62,7 @@ class VariableHandle:
                         replace_str = json.dumps(var_value, ensure_ascii=False)
                     else:
                         replace_str = str(var_value)
-                    # 执行断言
+                    # 执行替换
                     str_data = str_data.replace(full_match, replace_str, 1)
                     logger.info(f"替换变量 {var_name} -> {replace_str[:50]}...")
                 except KeyError as e:
