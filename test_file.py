@@ -2,6 +2,7 @@ import pytest
 from common import excel_read
 from config.setting import setting
 from common.executor import Executor
+from common.database import DatabaseUtils
 
 
 fileload = setting.TEST_FLIELOAD
@@ -14,6 +15,9 @@ class TestFile:
         """测试类级别初始化"""
         self.executor = Executor()
         yield
+
+
+
 
     # excel用例执行
     @pytest.mark.parametrize('file', excel_read.Excel().read_excel(fileload))

@@ -20,9 +20,18 @@ class Setting:
         self.ALL_YAML = self.ALL_YAML_ENV[self.ENV]  # 全局变量文件路径
         self.REPORT_PATH = self._get_env_var("REPORT_PATH", "reports/")  # 报告路径
         self.BASE_URLS = {
-            "生产环境": "https://admin.gsrtech.com",
-            "预生产环境": "https://stage-admin.gsrtech.com",
-            "测试环境": "https://test-omni.gsrtech.com"
+            "生产环境": {
+                "管理端": "https://admin.gsrtech.com",
+                "员工端": "https://admin.gsrtech.com"
+            },
+            "预生产环境": {
+                "管理端": "https://stage-admin.gsrtech.com",
+                "员工端": "https://stage-admin.gsrtech.com"
+            },
+            "测试环境": {
+                "管理端": "https://test-admin.gsrtech.com",
+                "员工端": "https://test-admin.gsrtech.com"
+            }
         }
         self.TEST_URL = self.BASE_URLS[self.ENV]
 
@@ -38,7 +47,7 @@ class Setting:
             "生产环境": ""
         }
         self.DB_PASSWORD_LIST = {
-            "测试环境": "gsr666666",
+            "测试环境": "7N193V3NLN4e7VfV",
             "预生产环境": "",
             "生产环境": ""
         }

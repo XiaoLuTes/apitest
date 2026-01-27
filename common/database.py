@@ -9,7 +9,6 @@ from config.setting import setting
 class DatabaseUtils:
     def __init__(self):
         self.db_timeout = setting.DB_TIMEOUT
-        self._db_utils = None
         self.host = str(setting.DB_HOST)
         self.user = str(setting.DB_USER)
         self.password = str(setting.DB_PASSWORD)
@@ -77,7 +76,7 @@ class DatabaseUtils:
             # 记录开始执行的日志
             logger.info(f"执行SQL验证: {sql}")
             logger.info(f"期望结果: {expected}")
-            result = self._db_utils.execute_query(sql)
+            result = self.execute_query(sql)
             allure.attach(str(result), "SQL执行结果", allure.attachment_type.TEXT)
             verification_passed = self.parse_and_verify_expected(result, expected)
             if verification_passed:
@@ -99,7 +98,10 @@ class DatabaseUtils:
     def parse_and_verify_expected(self, result, expected: str) -> bool:
         """解析期望结果并进行验证"""
         # 如果expected为空
-        if expected.lower() in ["empty", "[]", "null", "none"]:
+        if expected is None:
+            return len(result) == 0
+
+        elif expected.lower() in ["empty", "[]", "null", "none"]:
             return len(result) == 0
 
         # expected以count:开头(需要计数)
@@ -180,7 +182,7 @@ class DatabaseUtils:
         """
         try:
             logger.info(f"执行数据库更新: {sql}")
-            affected_rows = self._db_utils.execute_update(sql, timeout=self.db_timeout)
+            affected_rows = self.execute_update(sql)
             logger.info(f"数据库更新成功，影响行数: {affected_rows}")
             return affected_rows  # 返回影响的行数
         except TimeoutError as e:

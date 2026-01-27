@@ -14,6 +14,7 @@ class Executor:
         self._db_utils = None
         self.test_url = setting.TEST_URL
         self.fileload = setting.TEST_FLIELOAD
+        self.default_url = '管理端'
 
     def _ensure_database_connection(self):
         """确保数据库连接建立"""
@@ -42,7 +43,13 @@ class Executor:
             logger.info(f"执行用例:{case_id}-{str(name)}")
             allure.dynamic.title(name)
             method = file['method']
-            url = self.test_url + VariableHandle.replace_value(file['url'])
+            for url_key, url_value in self.test_url.items():
+                # if str(url_key) in str(name):
+                if name.startswith(url_key):
+                    url = url_value + VariableHandle.replace_value(file['url'])
+                    break
+            else:
+                url = self.test_url[self.default_url]
             data = VariableHandle.replace_value(file['data'])
             headers = VariableHandle.replace_value(file['headers'])
             extract = file['extract']
@@ -66,7 +73,9 @@ class Executor:
                     VariableHandle.extract_value(self.req, extract)
                 excel_read.Excel().excel_write(self.fileload, file['case_id'] + 1, 7, self.req.text)  # 写入接口返回
                 self.validate_result = VariableHandle.assert_validata(self.req, validata)
-            logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")
+            if self.req is not None:
+                logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")
             logger.info(f"测试通过")
+
         finally:
             self._close_database_connection()
