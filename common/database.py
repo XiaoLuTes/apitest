@@ -7,7 +7,16 @@ from config.setting import setting
 
 
 class DatabaseUtils:
+    _instance = None
+
+    def __new__(cls):  # 创建一个单例对象，保证executor执行器和conftest调用的是同一个对象
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
         self.db_timeout = setting.DB_TIMEOUT
         self.host = str(setting.DB_HOST)
         self.user = str(setting.DB_USER)
@@ -16,9 +25,20 @@ class DatabaseUtils:
         self.port = int(setting.DB_PORT)
         self.timeout = setting.DB_TIMEOUT
         self.connection = None
+        self._initialized = True
 
     def connect(self):
         """建立数据库连接"""
+        if self.connection is not None:
+            try:
+                # 检测连接是否存活，失效则自动重连
+                self.connection.ping(reconnect=True)
+                logger.info("复用已有数据库连接（连接有效）")
+                return self.connection
+            except pymysql.MySQLError as e:
+                logger.warning(f"现有数据库连接失效（{e}），将重新创建连接")
+                self.connection = None
+
         try:
             self.connection = pymysql.connect(
                 host=self.host,
@@ -36,37 +56,43 @@ class DatabaseUtils:
             logger.error(f"数据库连接失败: {e}")
             raise Exception
 
-    def execute_query(self, query: str, params=None) -> List[Dict[str, Any]]:
+    def close_database_connection(self):
+        """关闭数据库连接"""
+        if self.connection:
+            try:
+                self.connection.close()
+                logger.info("数据库连接已关闭")
+            except Exception as e:
+                logger.warning(f"关闭数据库连接时发生错误: {e}")
+            finally:
+                self.connection = None
+
+    def execute_query(self, sql: str, params=None) -> List[Dict[str, Any]]:
         """执行查询语句"""
         try:
-            if self.connection is None:
-                self.connect()
-
+            self.connect()
             with self.connection.cursor() as cursor:
-                cursor.execute(query, params or ())
+                cursor.execute(sql, params or ())
                 result = cursor.fetchall()  # 获取查询结果
                 logger.info(f"SQL执行成功")
                 return result
         except Exception as e:
-            logger.error(f"查询执行失败: {e}, SQL: {query}")
+            logger.error(f"查询执行失败: {e}, SQL: {sql}")
             raise
 
-    def execute_update(self, query: str, params=None) -> int:
+    def execute_update(self, sql: str, params=None) -> int:
         """执行更新语句"""
         try:
-            if self.connection is None:
-                self.connect()
-
+            self.connect()
             with self.connection.cursor() as cursor:
-                cursor.execute(query, params or ())
+                cursor.execute(sql, params or ())
                 self.connection.commit()  # 提交事务
                 rowcount = cursor.rowcount  # 获取影响行数
-                logger.info(f"更新执行成功: {query}, 影响行数: {rowcount}")
                 return rowcount
         except Exception as e:
             if self.connection:
                 self.connection.rollback()
-            logger.error(f"更新执行失败: {e}, SQL: {query}")
+            logger.error(f"更新语句执行失败: {e}, SQL: {sql}")
             raise
 
     @allure.step("执行数据库验证")

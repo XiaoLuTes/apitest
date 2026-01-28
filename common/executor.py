@@ -4,6 +4,7 @@ from config.setting import setting
 from common import request_util, excel_read
 from common.logger import logger
 from common.variable_handle import VariableHandle
+from common.database import DatabaseUtils
 
 
 class Executor:
@@ -11,31 +12,14 @@ class Executor:
         self.api = None
         self.req = None
         self.validate_result = None
-        self._db_utils = None
+        self._db_utils = DatabaseUtils()
         self.test_url = setting.TEST_URL
         self.fileload = setting.TEST_FLIELOAD
         self.default_url = '管理端'
 
-    def _ensure_database_connection(self):
-        """确保数据库连接建立"""
-        if self._db_utils is None:
-            from common.database import DatabaseUtils
-            logger.info("创建数据库连接")
-            self._db_utils = DatabaseUtils()
-            self._db_utils.connect()
-
-    def _close_database_connection(self):
-        """关闭数据库连接"""
-        if self._db_utils:
-            try:
-                self._db_utils.connection.close()
-                logger.info("数据库连接已关闭")
-            except Exception as e:
-                logger.warning(f"关闭数据库连接时发生错误: {e}")
-            finally:
-                self._db_utils = None
-
     def execute(self, file):
+        case_id = None
+        name = None
         try:
             case_id = file['case_id']
             name = VariableHandle.replace_value(file['name'])
@@ -44,7 +28,6 @@ class Executor:
             allure.dynamic.title(name)
             method = file['method']
             for url_key, url_value in self.test_url.items():
-                # if str(url_key) in str(name):
                 if name.startswith(url_key):
                     url = url_value + VariableHandle.replace_value(file['url'])
                     break
@@ -55,12 +38,12 @@ class Executor:
             extract = file['extract']
             validata = VariableHandle.replace_value(file['validata'])
             if method == 'db_select':
-                self._ensure_database_connection()
                 self._db_utils.verify_mysql_data(data, validata)
             elif method == 'db_update':
-                self._ensure_database_connection()
                 sql_result = self._db_utils.execute_mysql_update(data)
-                if validata and str(sql_result) != validata:
+                if validata is None:
+                    logger.info(f"未填写断言，不做判断处理")
+                elif validata and str(sql_result) != validata:
                     raise AssertionError(f"数据库更新影响行数不匹配，期望: {validata}, 实际: {sql_result}")
             else:
                 logger.info(f"\n实际请求url:{url},\n实际请求参数{data}")
@@ -77,5 +60,8 @@ class Executor:
                 logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")
             logger.info(f"测试通过")
 
-        finally:
-            self._close_database_connection()
+        except Exception as e:
+            case_id_str = str(case_id) if case_id is not None else "未知用例ID"
+            name_str = str(name) if name is not None else "未知用例名称"
+            logger.error(f"用例 {case_id_str}-{name_str} 执行失败: {str(e)}", exc_info=True)
+            raise

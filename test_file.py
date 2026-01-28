@@ -16,9 +16,6 @@ class TestFile:
         self.executor = Executor()
         yield
 
-
-
-
     # excel用例执行
     @pytest.mark.parametrize('file', excel_read.Excel().read_excel(fileload))
     def test_excel_cloud(self, file):
