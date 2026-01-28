@@ -2,7 +2,6 @@ import logging
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler  # 新增：按大小切割日志
-from config.setting import setting
 
 
 def setup_logger():
@@ -75,7 +74,6 @@ def setup_logger():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
     logger.addHandler(error_file_handler)
-
 
     return logger
 
