@@ -63,5 +63,5 @@ class Executor:
         except Exception as e:
             case_id_str = str(case_id) if case_id is not None else "未知用例ID"
             name_str = str(name) if name is not None else "未知用例名称"
-            logger.error(f"用例 {case_id_str}-{name_str} 执行失败: {str(e)}", exc_info=True)
+            logger.error(f"用例 {case_id_str}-{name_str} 执行失败: {str(e)}")
             raise

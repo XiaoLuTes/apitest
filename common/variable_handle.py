@@ -171,15 +171,17 @@ class VariableHandle:
             else:
                 validata_dict = validata
             if not isinstance(validata_dict, dict):
-                logger.error(f"断言必须是字典类型，实际: {type(validata_dict)}")
-                raise AssertionError(f"断言格式错误：必须是字典类型，实际为{type(validata_dict)}")
+                error_msg = f"断言必须是字典类型，实际: {type(validata_dict)}"
+                logger.error(error_msg)
+                raise AssertionError(error_msg)
+
             # 执行断言
             results = []
             failed_details = []  # 收集所有失败的断言详情
             for jsonpath_expr, expected_value in validata_dict.items():
                 actual_values = jsonpath.jsonpath(req.json(), jsonpath_expr)
                 actual_value = actual_values[0] if (actual_values and len(actual_values) > 0) else None
-                # 断言结果（统一转字符串比较，避免类型问题）
+                # 转字符串比较
                 check_result = str(actual_value) == str(expected_value)
                 results.append({
                     "key": jsonpath_expr,
@@ -192,7 +194,6 @@ class VariableHandle:
                     logger.info(msg)
                     allure.attach(f"断言成功", msg)
                 else:
-                    # 构建失败信息
                     fail_msg = (
                         f"断言项[{jsonpath_expr}]失败 | "
                         f"期望值: {expected_value} (类型: {type(expected_value).__name__}) | "
@@ -200,25 +201,26 @@ class VariableHandle:
                     )
                     logger.error(fail_msg)
                     failed_details.append(fail_msg)
-            # 存在失败断言则抛出异常，触发pytest用例失败
+            # 处理断言失败
             if failed_details:
                 # 构建汇总失败信息
                 fail_summary = (
-                    f"\n========== 断言失败汇总 ==========\n"
-                    f"总计失败断言数: {len(failed_details)}\n"
-                    + "\n".join([f"{i+1}. {msg}" for i, msg in enumerate(failed_details)])
-                    + "\n=================================="
+                        f"\n========== 断言失败汇总 ==========\n"
+                        f"总计失败断言数: {len(failed_details)}\n"
+                        + "\n".join([f"{i + 1}. {msg}" for i, msg in enumerate(failed_details)])
+                        + "\n=================================="
                 )
-                logger.error(fail_summary)
                 allure.attach(f"断言失败", fail_summary)
-                raise AssertionError(fail_summary)
+                raise AssertionError(fail_summary)  # 抛出断言失败异常
             logger.info("所有断言验证通过")
             return results
-        except AssertionError:
-            # 主动抛出的断言异常，直接向上传递（不捕获，让pytest处理）
-            raise
+        # 捕获解析/执行过程中的非断言异常（如JSON解析失败、接口响应格式错误等）
+        except AssertionError as ae:
+            # 预期内的断言失败，直接向上抛出
+            raise ae
         except Exception as e:
-            # 其他异常（如解析失败）也标记为断言失败
+            # 非预期的异常，打印错误信息
             error_msg = f"断言执行异常: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            raise AssertionError(error_msg)
+            logger.error(error_msg)
+            allure.attach(f"断言执行异常", error_msg)
+            raise AssertionError(error_msg)  # 转为断言异常抛出
