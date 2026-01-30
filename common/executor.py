@@ -21,6 +21,7 @@ class Executor:
         case_id = None
         name = None
         try:
+            sheet = file['sheet']
             case_id = file['case_id']
             name = VariableHandle.replace_value(file['name'])
             logger.info("\n----------------------------")
@@ -54,7 +55,7 @@ class Executor:
                 allure.attach(body=self.req.text, name='响应参数', attachment_type=allure.attachment_type.JSON)
                 if extract:
                     VariableHandle.extract_value(self.req, extract)
-                excel_read.Excel().excel_write(self.fileload, file['case_id'] + 1, 7, self.req.text)  # 写入接口返回
+                excel_read.Excel().excel_write(self.fileload, sheet, file['case_id'] + 1, 7, self.req.text)  # 写入接口返回
                 self.validate_result = VariableHandle.assert_validata(self.req, validata)
             if self.req is not None:
                 logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")
