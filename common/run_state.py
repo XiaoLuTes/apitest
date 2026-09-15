@@ -17,19 +17,32 @@ from common.logger import logger
 
 _untrusted = {}
 _outcomes = {"passed": 0, "failed": 0, "skipped": 0}
+_failed_cases = []  # [(用例编号, 用例名称)]，用于通知 / 汇总里列出失败用例
 
 
 def reset():
     """会话开始重置状态（conftest 调用）"""
     _untrusted.clear()
+    _failed_cases.clear()
     for key in _outcomes:
         _outcomes[key] = 0
 
 
-def record_outcome(outcome):
-    """记录一条用例的执行结果：passed / failed / skipped"""
+def record_outcome(outcome, case_id=None, name=None):
+    """记录一条用例的执行结果：passed / failed / skipped
+
+    :param case_id: 用例编号（失败时记录，便于通知里列出失败用例）
+    :param name: 用例名称
+    """
     if outcome in _outcomes:
         _outcomes[outcome] += 1
+    if outcome == "failed" and case_id is not None:
+        _failed_cases.append((case_id, name))
+
+
+def failed_cases():
+    """本次执行失败的用例列表 [(用例编号, 用例名称)]"""
+    return list(_failed_cases)
 
 
 def summary():

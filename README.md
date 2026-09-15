@@ -51,6 +51,7 @@ api/
 │   ├── request_util.py          # 接口请求封装
 │   ├── run_state.py             # 运行时状态：变量依赖（失败→下游跳过）、通过/失败/跳过计数
 │   ├── variable_handle.py       # 变量替换、变量提取、断言校验
+│   ├── wecom.py                 # 企业微信群机器人通知（会话结束推送结果）
 │   └── yaml_util.py             # 全局变量文件读写
 │
 ├── config/                      # 配置
@@ -262,11 +263,12 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 | `REPORT_PATH` | 报告目录（默认 `reports/`） |
 | `RESULT_PATH` | 用例执行结果文件输出目录（默认 `reports/results/`） |
 | `ALLURE_RESULT_PATH` | allure 原始结果目录（默认 `reports/temp/`，须与 pytest.ini 里的 `--alluredir` 一致） |
+| `WECOM_WEBHOOK` | 企业微信群机器人 Webhook（留空则不发送通知；也可用系统环境变量注入） |
 | `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_PORT` / `DB_NAME` | 数据库连接信息 |
 | `DB_TIMEOUT` | 数据库连接超时（默认 30 秒） |
 
 **环境变量覆盖**（不改代码即可切换，便于 Jenkins 传参）：
-`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`
+`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`
 
 ```bat
 :: Windows (cmd)
@@ -332,6 +334,25 @@ export CURRENT_PROJECT=调试
 - 文件名里的 **通过 / 失败 / 跳过条数**来自本次会话的实际执行结果，一眼就能区分批次（同一轮执行的多个结果文件时间戳相同）；
 - 结果文件与源文件体积相当，跑多了记得定期清理。
 - **结果文件会自动作为附件挂进 allure 报告**，详见下一节。
+
+### 企业微信通知
+
+在 `.env`（或系统环境变量）里配置 `WECOM_WEBHOOK` 后，**会话结束会自动把执行结果推到企业微信群**：
+
+```text
+## 接口自动化执行结果
+> 项目：假勤
+> 结果：通过 8 失败 5 跳过 20
+> 失败用例：5-年假（按duration算endtime）、8-病假（按duration算endtime）
+> 结果文件：test_approval_20260915_163116_通过8_失败5_跳过20.xlsx
+> [查看 Allure 报告](http://jenkins/job/apitest/128/allure/)
+```
+
+- Webhook 获取：企业微信群 → 右上角「…」→ 群机器人 → 添加机器人 → 复制 Webhook 地址（形如 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx`）；
+- **留空则不发送**（本地执行完全无感，只在日志里打一行 INFO）；
+- Jenkins 上执行时会自动带上 `[查看 Allure 报告]` 链接（取 `BUILD_URL` 环境变量）；
+- 失败用例最多列前 10 条；内容超过 4096 字节（UTF-8）会自动截断；
+- 发送失败只记 WARNING，**不影响用例结果**；机器人限 **20 条/分钟**，所以只在会话结束聚合发送一条。
 
 ### allure 报告
 

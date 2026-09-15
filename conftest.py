@@ -1,6 +1,8 @@
+import os
+
 import pytest
 from config.setting import setting
-from common import allure_util, excel_read, run_state, yaml_util
+from common import allure_util, excel_read, run_state, wecom, yaml_util
 from common.logger import logger
 from common.database import DatabaseUtils
 
@@ -25,6 +27,19 @@ def execute_session():
         # 把结果文件作为附件附加到 allure 报告（报告里会出现一条可下载的汇总记录）
         allure_util.export_result_files(result_files, title=f"用例执行结果文件（{run_state.summary_text()}）")
         logger.info(f"本次执行汇总：{run_state.summary_text()}")
+        # 企业微信通知：在 .env / 系统环境变量里配置 WECOM_WEBHOOK 后，会话结束自动推送执行结果
+        build_url = os.environ.get("BUILD_URL")   # Jenkins 会注入构建地址，本地执行时为 None
+        wecom.notify(
+            setting.WECOM_WEBHOOK,
+            project=setting.CURRENT_PROJECT,
+            summary=run_state.summary_text(),
+            failed_cases=[f"{case_id}-{name}" for case_id, name in run_state.failed_cases()],
+            result_files=result_files,
+            report_url=f"{build_url}allure/" if build_url else None,
+        )
+        # 把结果文件（源用例的完整副本）也发到群里：企微文件消息上限 20MB，上传失败只记 WARNING
+        if result_files:
+            wecom.send_file(setting.WECOM_WEBHOOK, result_files[0])
         if db_instance.connection is not None:
             db_instance.close_database_connection()
             logger.info(f"测试结束，关闭数据库链接")

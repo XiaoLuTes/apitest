@@ -143,7 +143,7 @@ class Executor:
             # 3、本条用例要产出的变量标记为不可信，让依赖它的后续用例跳过而不是连环报错
             if setting.INVALIDATE_ON_ANY_FAILURE or not extract_done:
                 run_state.mark_untrusted(extract_keys, f"用例{case_id_str}执行失败")
-            run_state.record_outcome("failed")
+            run_state.record_outcome("failed", case_id_str, name_str)
             # 请求还没发出去就失败时，把失败原因写进结果文件，便于直接看结果表排查
             if self.req is None:
                 try:

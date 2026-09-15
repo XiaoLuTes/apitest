@@ -50,6 +50,8 @@ class Setting:
         self.RESULT_PATH = self._get_env_var("RESULT_PATH", f"{self.REPORT_PATH}results/")
         # allure 原始结果目录（与 pytest.ini 里的 --alluredir 保持一致）
         self.ALLURE_RESULT_PATH = self._get_env_var("ALLURE_RESULT_PATH", f"{self.REPORT_PATH}temp/")
+        # 企业微信群机器人 Webhook：配置后会话结束自动推送执行结果卡片（留空则不发送，本地执行无感）
+        self.WECOM_WEBHOOK = self._get_env_var("WECOM_WEBHOOK", "")
         self.BASE_URLS = {
             "生产环境": {
                 "管理端": "https://admin.gsrtech.com",
