@@ -1,7 +1,29 @@
 import logging
 import os
+import time
 from datetime import datetime
-from logging.handlers import RotatingFileHandler  # 新增：按大小切割日志
+from logging.handlers import RotatingFileHandler  # 按大小切割日志
+
+
+def cleanup_old_logs(log_dir, days=7):
+    """清理 N 天前的日志，但始终保留最新的一份（即使它已超过 N 天）"""
+    cutoff = time.time() - days * 86400
+
+    files = [os.path.join(log_dir, f) for f in os.listdir(log_dir)
+             if os.path.isfile(os.path.join(log_dir, f))]
+    if not files:
+        return
+
+    newest = max(files, key=os.path.getmtime)
+
+    removed = 0
+    for path in files:
+        if path != newest and os.path.getmtime(path) < cutoff:
+            os.remove(path)
+            removed += 1
+
+    if removed:
+        print(f"[logger] 已清理 {removed} 个过期日志文件: {log_dir}")
 
 
 def setup_logger():
@@ -16,6 +38,9 @@ def setup_logger():
     # 转为绝对路径（消除..的影响）
     log_dir = os.path.abspath(log_dir)
     log_dir_error = os.path.abspath(log_dir_error)
+    # 清理7天前的过期日志（保留最新一份）
+    cleanup_old_logs(log_dir, days=7)        # 全量日志
+    cleanup_old_logs(log_dir_error, days=7)  # 错误日志
 
     # 2. 日志文件名优化（按日期命名，而非时间戳，避免文件过多）
     today = datetime.now().strftime("%Y%m%d")

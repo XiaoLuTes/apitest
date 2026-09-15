@@ -1,3 +1,5 @@
+import numbers
+
 import allure
 import pymysql
 from pymysql import cursors
@@ -29,6 +31,12 @@ class DatabaseUtils:
 
     def connect(self):
         """建立数据库连接"""
+        # 配置缺失时给出明确提示（数据库密码等敏感配置放在项目根目录的 .env 里，不入库）
+        missing = [name for name, value in (("DB_HOST", self.host), ("DB_USER", self.user),
+                                           ("DB_PASSWORD", self.password), ("DB_NAME", self.database)) if not value]
+        if missing:
+            raise RuntimeError(f"数据库配置缺失：{','.join(missing)}；请在项目根目录的 .env（或系统环境变量）中配置后重试")
+
         if self.connection is not None:
             try:
                 # 检测连接是否存活，失效则自动重连
@@ -96,7 +104,7 @@ class DatabaseUtils:
             raise
 
     @allure.step("执行数据库验证")
-    def verify_mysql_data(self, sql: str, expected: str):
+    def verify_mysql_data(self, sql: Any, expected: Any):
         """执行SQL查询并验证结果"""
         try:
             # 记录开始执行的日志
@@ -121,41 +129,75 @@ class DatabaseUtils:
             logger.error(error_msg)
             raise
 
-    def parse_and_verify_expected(self, result, expected: str) -> bool:
-        """解析期望结果并进行验证"""
-        # 如果expected为空
-        if expected is None:
+    def parse_and_verify_expected(self, result, expected) -> bool:
+        """解析期望结果并进行验证
+
+        支持的写法：
+        - 空 / empty / [] / null / none：查询结果必须为空
+        - count:n ：结果行数等于 n；count>:n ：结果行数大于 n
+        - contains:xxx ：结果中任一行任一字段包含 xxx
+        - 字段=值[,字段2=值2] ：存在某一行各字段都等于期望值
+        - 其他：结果只有一行一列时与该值比较，否则只校验结果非空
+
+        修复：原先直接对 expected 调用 .lower()/startswith()，
+        当断言列填的是数字（openpyxl 读出来是 int）时会抛 AttributeError，
+        这里统一先转成字符串再判断。
+        """
+        # 统一转字符串，兼容断言列填数字的情况
+        exp = "" if expected is None else str(expected).strip()
+
+        # 期望为空：校验查询结果为空
+        if exp == "" or exp.lower() in ["empty", "[]", "null", "none"]:
             return len(result) == 0
 
-        elif expected.lower() in ["empty", "[]", "null", "none"]:
-            return len(result) == 0
+        # count>:n 结果行数大于n（必须先于count:判断）
+        if exp.startswith("count>:"):
+            return len(result) > self._to_int(exp.split(":", 1)[1], expected)
 
-        # expected以count:开头(需要计数)
-        if expected.startswith("count:"):
-            expected_count = int(expected.split(":")[1].strip())
-            return len(result) == expected_count
+        # count:n 结果行数等于n
+        if exp.startswith("count:"):
+            return len(result) == self._to_int(exp.split(":", 1)[1], expected)
 
-        # expected以count>开头(大于某数)
-        if expected.startswith("count>:"):
-            min_count = int(expected.split(":")[1].strip())
-            return len(result) > min_count
-
-        # expected以contains:开头(包含)
-        if expected.startswith("contains:"):
-            expected_value = expected.split(":", 1)[1].strip()
-            return self.verify_contains(result, expected_value)
+        # contains:xxx 结果中包含xxx
+        if exp.startswith("contains:"):
+            return self.verify_contains(result, exp.split(":", 1)[1].strip())
 
         # 字段值验证 - 格式: "字段=值" 或 "字段1=值1,字段2=值2"
-        if "=" in expected and not expected.startswith(("count", "contains")):
-            return self.verify_field_values(result, expected)
+        if "=" in exp:
+            return self.verify_field_values(result, exp)
 
         # 直接值比较（用于单值查询）- 当结果只有一行一列时
         if len(result) == 1 and len(result[0]) == 1:
             actual_value = list(result[0].values())[0]
-            return str(actual_value) == expected
+            return self.value_equal(actual_value, exp)
 
-        # 都不包含情况下，检查结果是否非空
+        # 都不匹配时，检查结果是否非空
         return len(result) > 0
+
+    @staticmethod
+    def _to_int(value, origin) -> int:
+        """把断言里的数字文本转成int，格式不对时给出明确报错"""
+        try:
+            return int(str(value).strip())
+        except ValueError as e:
+            raise ValueError(f"数据库断言格式错误，count 后必须是整数，实际：{origin}") from e
+
+    @staticmethod
+    def value_equal(actual, expected) -> bool:
+        """数据库断言的值比较：至少一方是数字时按数值比较，其余按字符串比较
+
+        修复：原先统一 str() 比较，导致数据库返回 Decimal('12.00') 这类值与断言里的 12 判不相等。
+        """
+        actual_is_num = isinstance(actual, numbers.Number) and not isinstance(actual, bool)
+        expected_is_num = isinstance(expected, numbers.Number) and not isinstance(expected, bool)
+        if actual_is_num and expected_is_num:
+            return actual == expected
+        if actual_is_num or expected_is_num:
+            try:
+                return float(actual) == float(expected)
+            except (TypeError, ValueError):
+                return False
+        return str(actual) == str(expected)
 
     @staticmethod
     def verify_contains(result, expected_value: str) -> bool:
@@ -192,7 +234,7 @@ class DatabaseUtils:
         for row in result:
             match = True  # 假设当前行匹配
             for field, expected_value in expected_pairs.items():
-                if field not in row or str(row[field]) != expected_value:
+                if field not in row or not DatabaseUtils.value_equal(row[field], expected_value):
                     match = False
                     break
             if match:
@@ -200,7 +242,7 @@ class DatabaseUtils:
         return False
 
     @allure.step("执行数据库更新操作")
-    def execute_mysql_update(self, sql: str):
+    def execute_mysql_update(self, sql: Any):
         """
         执行数据库更新操作（INSERT, UPDATE, DELETE）
         Returns:
@@ -219,3 +261,23 @@ class DatabaseUtils:
             error_msg = f"数据库更新执行失败: {str(e)}"
             logger.error(error_msg)
             raise  # 重新抛出异常
+
+    @staticmethod
+    def verify_affected_rows(affected: int, expected: Any) -> bool:
+        """校验数据库更新（INSERT/UPDATE/DELETE）的影响行数
+        - 空值：不做校验，直接返回 True
+        - count:n ：影响行数必须等于 n
+        - count>:n：影响行数必须大于 n
+        - empty/null/none：影响行数必须为 0
+        - 其他值：与影响行数字符串比较
+        """
+        if expected is None or str(expected).strip() == "":
+            return True
+        exp = str(expected).strip()
+        if exp.startswith("count>:"):
+            return affected > int(exp.split(":", 1)[1].strip())
+        if exp.startswith("count:"):
+            return affected == int(exp.split(":", 1)[1].strip())
+        if exp.lower() in ("empty", "null", "none"):
+            return affected == 0
+        return str(affected) == exp

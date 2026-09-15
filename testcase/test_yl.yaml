@@ -2,7 +2,7 @@ all:
   headers:  &headers
    Content-Type: application/json;charset=UTF-8
    x-DeviceInfo: 1|172.16.50.15|1|9.5.0|samsung|SM-G977N|4B4FFE68E3590F2A4E1F5B298867EBF1|02-00-00-00-00-00|android 7.1.2|1440X2560|zh|||
-   Authorization: Basic cGg1OjE1MzQ3NzEyNzc1Okw5UXlxdGp1fDF8MXwxNjc2MDkzNzAzMzc4fGtMaEk4OGdPSFpDYTg5LlJ1cUNXNXd3TFlSNzJCbDhjVWk2dFVWYUNZU19WcDRQUWN0c0NLVUxZaFRzTjNkWjNmRjhMck9MT2I0LnRmM0pMWGVhbVpiN1NnRHU5M1cyczZ1OGdWblM5Lm5ma0lvNFVWekJiQ0k3cjIuWnJfa2g3U1RQR2lvS0RkekFGNm9IM1BXRmIybEFBd08xc1FNbk4yX3RmWmdOYjQ3MC0=
+   Authorization: Basic ${yl_basic_token}   # 原字面 token 已移除；此文件当前未接入执行链路，需要时把 token 放进 .env 并按 setting.ENV_VARIABLES 注入
   url: https://miniprogram.mail.10086.cn/ecloud/yun-dev/adapter/hcy/group
 
 cloud:
