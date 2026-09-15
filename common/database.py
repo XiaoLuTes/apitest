@@ -62,7 +62,12 @@ class DatabaseUtils:
             return self.connection
         except Exception as e:
             logger.error(f"数据库连接失败: {e}")
-            raise Exception
+            # MySQL8的 caching_sha2_password / sha256_password认证需要 cryptography包：
+            #服务端缓存过密码时走 fast auth不需要它，一旦服务器重启或改密码导致缓存失效就会报错
+            if "cryptography" in str(e):
+                logger.error("缺少依赖 cryptography：请在当前 Python环境执行 pip install cryptography（或 pip install -r requirements.txt）")
+            #保留原始异常与堆栈（原来 raise Exception会把真正的错误信息丢掉）
+            raise
 
     def close_database_connection(self):
         """关闭数据库连接"""

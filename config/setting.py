@@ -78,36 +78,11 @@ class Setting:
         # 数据库配置
         # 数据库配置：敏感信息不写进代码，真实值放在项目根目录的 .env 里
         # 优先级：系统环境变量 > .env > 这里的默认值
-        self.DB_HOST_LIST = {
-            "测试环境": "",
-            "预生产环境": "",
-            "生产环境": ""
-        }
-        self.DB_USER_LIST = {
-            "测试环境": "",
-            "预生产环境": "",
-            "生产环境": ""
-        }
-        self.DB_PASSWORD_LIST = {
-            "测试环境": "",
-            "预生产环境": "",
-            "生产环境": ""
-        }
-        self.DB_PORT_LIST = {
-            "测试环境": "3306",
-            "预生产环境": "",
-            "生产环境": ""
-        }
-        self.DB_NAME_LIST = {
-            "测试环境": "",
-            "预生产环境": "",
-            "生产环境": ""
-        }
-        self.DB_HOST = self._get_env_var("DB_HOST", self.DB_HOST_LIST[self.ENV])
-        self.DB_USER = self._get_env_var("DB_USER", self.DB_USER_LIST[self.ENV])
-        self.DB_PASSWORD = self._get_env_var("DB_PASSWORD", self.DB_PASSWORD_LIST[self.ENV])
-        self.DB_PORT = self._get_env_var("DB_PORT", self.DB_PORT_LIST[self.ENV])
-        self.DB_NAME = self._get_env_var("DB_NAME", self.DB_NAME_LIST[self.ENV])
+        self.DB_HOST = self._get_env_var("DB_HOST", '')
+        self.DB_USER = self._get_env_var("DB_USER", '')
+        self.DB_PASSWORD = self._get_env_var("DB_PASSWORD", '')
+        self.DB_PORT = self._get_env_var("DB_PORT", '')
+        self.DB_NAME = self._get_env_var("DB_NAME", '')
         self.DB_TIMEOUT = int(self._get_env_var("DB_TIMEOUT", "30"))
 
         # 需要从 .env / 环境变量注入成运行期变量的敏感配置（值取自同名环境变量，通常写在 .env 里）
