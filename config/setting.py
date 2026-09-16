@@ -55,6 +55,9 @@ class Setting:
         # 企业微信通知：markdown 内容上限（字节，企微硬性上限 4096）与请求超时（秒）
         self.WECOM_MAX_CONTENT_BYTES = int(self._get_env_var("WECOM_MAX_CONTENT_BYTES", "4000"))
         self.WECOM_TIMEOUT = int(self._get_env_var("WECOM_TIMEOUT", "10"))
+        # 企业微信通知总开关：false 时即使配了 Webhook 也不推送（本地调试不想打扰群时用）
+        self.WECOM_ENABLE = self._get_env_var("WECOM_ENABLE", "true").strip().lower() in (
+            "true", "1", "yes", "y", "on")
         self.BASE_URLS = {
             "生产环境": {
                 "管理端": "https://admin.gsrtech.com",

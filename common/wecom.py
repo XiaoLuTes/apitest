@@ -26,10 +26,23 @@ def _truncate_bytes(text: str, max_bytes: int = None) -> str:
     return data[:max_bytes].decode("utf-8", errors="ignore") + "…"
 
 
+def _disabled_reason(webhook=None):
+    """返回"不发送通知"的原因；返回 None 表示可以发送
+
+    统一判断两个开关：WECOM_ENABLE（总开关，默认 true）、WECOM_WEBHOOK（没配就不发）
+    """
+    if not setting.WECOM_ENABLE:
+        return "WECOM_ENABLE=false（通知已关闭）"
+    if not (webhook or setting.WECOM_WEBHOOK):
+        return "未配置 WECOM_WEBHOOK"
+    return None
+
+
 def send_markdown(webhook: str, content: str) -> bool:
-    """发送 markdown 消息；webhook 为空时直接跳过"""
-    if not webhook:
-        logger.info("未配置 WECOM_WEBHOOK，跳过企业微信通知")
+    """发送 markdown 消息；未开启通知或没配 webhook 时跳过"""
+    reason = _disabled_reason(webhook)
+    if reason:
+        logger.info(f"跳过企业微信通知：{reason}")
         return False
     try:
         resp = requests.post(
@@ -50,7 +63,7 @@ def send_markdown(webhook: str, content: str) -> bool:
 
 def send_file(webhook: str, file_path: str) -> bool:
     """把文件（例如结果 Excel）发到群里：先上传拿 media_id，再发 file 消息"""
-    if not webhook or not file_path or not os.path.isfile(file_path):
+    if _disabled_reason(webhook) or not file_path or not os.path.isfile(file_path):
         return False
     try:
         key = webhook.split("key=")[-1]
@@ -86,8 +99,9 @@ def notify(webhook: str, project: str, summary: str, failed_cases=None,
     :param result_files: 本次生成的结果文件路径列表
     :param report_url: allure 报告链接（Jenkins 下自动取 BUILD_URL）
     """
-    if not webhook:
-        logger.info("未配置 WECOM_WEBHOOK，跳过企业微信通知")
+    reason = _disabled_reason(webhook)
+    if reason:
+        logger.info(f"跳过企业微信通知：{reason}")
         return False
 
     failed_cases = failed_cases or []

@@ -266,11 +266,12 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 | `WECOM_WEBHOOK` | 企业微信群机器人 Webhook（留空则不发送通知；也可用系统环境变量注入） |
 | `WECOM_MAX_CONTENT_BYTES` | 通知内容上限（字节），默认 4000（企微硬性上限 4096） |
 | `WECOM_TIMEOUT` | 通知请求超时（秒），默认 10 |
+| `WECOM_ENABLE` | 通知总开关（默认 `true`）；设成 `false` 时即使配了 Webhook 也不推送 |
 | `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_PORT` / `DB_NAME` | 数据库连接信息 |
 | `DB_TIMEOUT` | 数据库连接超时（默认 30 秒） |
 
 **环境变量覆盖**（不改代码即可切换，便于 Jenkins 传参）：
-`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`、`WECOM_MAX_CONTENT_BYTES`、`WECOM_TIMEOUT`
+`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`、`WECOM_MAX_CONTENT_BYTES`、`WECOM_TIMEOUT`、`WECOM_ENABLE`
 
 ```bat
 :: Windows (cmd)
@@ -352,6 +353,7 @@ export CURRENT_PROJECT=调试
 
 - Webhook 获取：企业微信群 → 右上角「…」→ 群机器人 → 添加机器人 → 复制 Webhook 地址（形如 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxx`）；
 - **留空则不发送**（本地执行完全无感，只在日志里打一行 INFO）；
+- **总开关**：`WECOM_ENABLE=false` 时即使配了 Webhook 也不推送（适合本地调试不想打扰群、或临时关掉某个 job）；
 - Jenkins 上执行时会自动带上 `[查看 Allure 报告]` 链接（取 `BUILD_URL` 环境变量）；
 - 失败用例最多列前 10 条；内容超过 4096 字节（UTF-8）会自动截断；
 - 发送失败只记 WARNING，**不影响用例结果**；机器人限 **20 条/分钟**，所以只在会话结束聚合发送一条。
