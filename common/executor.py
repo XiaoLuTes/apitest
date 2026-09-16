@@ -6,7 +6,7 @@ import pytest
 from config.setting import setting
 from common import request_util, excel_read, run_state
 from common.logger import logger
-from common.variable_handle import UpstreamDependencyError, VariableHandle
+from common.variable_handle import ExtractValueError, UpstreamDependencyError, VariableHandle, VariableNotFoundError
 from common.database import DatabaseUtils
 
 
@@ -62,6 +62,7 @@ class Executor:
         extract_keys = []
         extract_done = False
         self.req = None
+        error = None
         try:
             sheet = file['sheet']
             row_num = file['row_num']  # 用例真实行号，用于回写结果
@@ -138,6 +139,7 @@ class Executor:
             self._skip_case(file, case_id, str(e), extract_keys)
 
         except Exception as e:
+            error = e
             case_id_str = str(case_id) if case_id is not None else "未知用例ID"
             name_str = str(name) if name is not None else str(file.get('name') or "未知用例名称")
             # 3、本条用例要产出的变量标记为不可信，让依赖它的后续用例跳过而不是连环报错
@@ -152,4 +154,10 @@ class Executor:
                 except Exception:
                     pass
             logger.error(f"用例 {case_id_str}-{name_str} 执行失败: {str(e)}")
-            raise
+
+        if error is not None:
+            # 用例级失败（断言失败 / 变量未配置 / 提取失败）不打回溯：失败原因在报错信息里已经写清楚了，
+            # 打回溯只会在控制台和 Jenkins 里刷出框架源码；真正的框架异常（bug）仍然保留完整回溯
+            if isinstance(error, (AssertionError, ExtractValueError, VariableNotFoundError)):
+                pytest.fail(str(error), pytrace=False)
+            raise error
