@@ -42,16 +42,20 @@ class Executor:
             logger.warning(f"用例名称未以{list(self.test_url.keys())}开头，按默认端[{self.default_url}]拼接请求地址")
         return base_url + path
 
+    def _record_verdict(self, file, text):
+        """把用例结果（通过 / 失败：原因 / 跳过：原因）写进结果文件的 result 列"""
+        sheet, row_num = file.get('sheet'), file.get('row_num')
+        if sheet is None or row_num is None:
+            return
+        try:
+            excel_read.Excel.record_result(self.fileload, sheet, row_num, file.get('result_col'), text)
+        except Exception:
+            pass
+
     def _skip_case(self, file, case_id, reason, extract_keys=None):
         """把用例标记为跳过：写结果文件、计入跳过数、把它要产出的变量标记为不可信"""
         logger.warning(f"用例 {case_id}-{file.get('name')} 跳过: {reason}")
-        sheet, row_num = file.get('sheet'), file.get('row_num')
-        if sheet is not None and row_num is not None:
-            try:
-                excel_read.Excel.record_result(self.fileload, sheet, row_num, file.get('result_col', 7),
-                                               f"【跳过】{reason}")
-            except Exception:
-                pass
+        self._record_verdict(file, f"跳过：{reason}")
         run_state.record_outcome("skipped")
         run_state.mark_untrusted(extract_keys, f"用例{case_id}跳过")
         pytest.skip(f"用例 {case_id} 跳过：{reason}")
@@ -66,7 +70,6 @@ class Executor:
         try:
             sheet = file['sheet']
             row_num = file['row_num']  # 用例真实行号，用于回写结果
-            result_col = file.get('result_col', 7)  # 结果列，用于回写结果
             case_id = file['case_id']
             allure.dynamic.title(str(file.get('name') or case_id))
             # 1、依赖检查：本条用例引用的变量若来自失败 / 跳过的上游用例，直接跳过，避免“一条根因 + N 条连环红”
@@ -122,7 +125,7 @@ class Executor:
                 allure.attach(body=json.dumps(data, ensure_ascii=False, default=str), name='请求参数',
                               attachment_type=allure.attachment_type.JSON)
                 allure.attach(body=self.req.text, name='响应参数', attachment_type=allure.attachment_type.JSON)
-                excel_read.Excel.record_result(self.fileload, sheet, row_num, result_col, self.req.text)
+                excel_read.Excel.record_result(self.fileload, sheet, row_num, file.get('response_col'), self.req.text)
                 if extract:
                     VariableHandle.extract_value(self.req, extract)
                 extract_done = True
@@ -131,6 +134,7 @@ class Executor:
             if self.req is not None:
                 logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")
             logger.info(f"测试通过")
+            self._record_verdict(file, "通过")
             run_state.mark_trusted(extract_keys)
             run_state.record_outcome("passed")
 
@@ -146,13 +150,9 @@ class Executor:
             if setting.INVALIDATE_ON_ANY_FAILURE or not extract_done:
                 run_state.mark_untrusted(extract_keys, f"用例{case_id_str}执行失败")
             run_state.record_outcome("failed", case_id_str, name_str)
-            # 请求还没发出去就失败时，把失败原因写进结果文件，便于直接看结果表排查
-            if self.req is None:
-                try:
-                    excel_read.Excel.record_result(self.fileload, file.get('sheet'), file.get('row_num'),
-                                                   file.get('result_col', 7), f"【失败】{str(e)}")
-                except Exception:
-                    pass
+            # 把失败原因写进结果文件的 result 列（接口返回写在 response 列）
+            one_line = " ".join(str(e).split())[:500]
+            self._record_verdict(file, f"失败：{one_line}")
             logger.error(f"用例 {case_id_str}-{name_str} 执行失败: {str(e)}")
 
         if error is not None:

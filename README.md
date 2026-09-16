@@ -61,7 +61,7 @@ api/
 ├── reports/                     # 报告与日志（运行后自动产生）
 │   ├── logs/                    # 全量日志  API_log_YYYYMMDD.log
 │   ├── logs_error/              # 错误日志  API_error_log_YYYYMMDD.log
-│   ├── results/                 # 用例执行结果文件（源用例的完整副本 + result 列）
+│   ├── results/                 # 用例执行结果文件（源用例的完整副本 + result / response 列）
 │   └── temp/                    # allure 原始结果（下次运行前会清空）
 │
 ├── testcase/                    # 用例
@@ -135,14 +135,14 @@ python run.py
 | 位置 | 看什么 |
 | --- | --- |
 | 控制台 | 用例通过 / 失败概览 |
-| `reports/results/` 下的结果文件 | 每条用例的实际响应 + 本次通过/失败/跳过条数（写在文件名里）；源用例文件不再改动 |
+| `reports/results/` 下的结果文件 | 每条用例的 **用例结果**（`result` 列）与 **接口返回**（`response` 列）+ 本次通过/失败/跳过条数（写在文件名里）；源用例文件不再改动 |
 | `reports/logs/` | 排查失败原因 |
 
 ---
 
 ## 5. Excel 用例编写规范
 
-表头（第 1 行）必须存在，**列名不要改**（列名会作为字典 key，`result` 列是按表头名自动识别的）。共 9 列：
+表头（第 1 行）必须存在，**列名不要改**（列名会作为字典 key，`result` / `response` 列是按表头名自动识别的）。共 10 列（第 7 列 `response` 写接口返回，第 10 列 `result` 写用例结果）：
 
 | # | 列名 | 是否手填 | 说明 |
 | --- | --- | --- | --- |
@@ -152,9 +152,10 @@ python run.py
 | 4 | `method` | 是 | 大小写不敏感。HTTP：`get/post/put/patch/delete/head/options`；数据库：`db_select` / `db_update` |
 | 5 | `url` | 是 | 接口路径，可含变量，如 `/api/center/template/reject/task/${taskid}?isProxy=true`。以 `http://`、`https://` 开头则视为完整地址，不再拼域名 |
 | 6 | `data` | 是 | `get` → 查询参数字符串（`pageNum=1&pageSize=10`）；`post/put/patch/delete` → JSON 文本请求体（变量可嵌在字符串里）；`db_*` → SQL 语句 |
-| 7 | `result` | **留空** | 执行后把响应文本写入结果文件（源用例文件不修改） |
+| 7 | `response` | **留空** | **接口返回原文**：跑完自动写入响应文本；请求没发出去（变量缺失 / 被跳过）时为空 |
 | 8 | `extract` | 否 | 变量提取，JSON 文本，如 `{"taskid": "$.data.taskId"}`。表达式以 `$` 开头 → JSONPath；其它 → 正则（**推荐 JSONPath**）。取不到内容本条用例直接失败 |
 | 9 | `validata` | 否 | 断言，JSON 文本。留空 → HTTP 用例跳过断言（⚠️ 数据库用例语义不同，见 5.3） |
+| 10 | `result` | **留空** | **用例结果**：跑完自动写入 `通过` / `失败：原因` / `跳过：原因`；和接口返回分开，一眼就能看出用例过没过 |
 
 ### 5.1 断言写法（HTTP 用例）
 
@@ -237,7 +238,7 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 - 用例**失败或跳过**后，它声明的这些变量会被标记为**不可信**；
 - 之后引用到这些变量的用例（名称、url、data、headers、validata 里出现 `${变量}`）**不再发请求，直接标记为 skipped**，跳过原因写在报告里，例如：
   `用例 2 跳过：依赖的前置用例失败 -> ${instanceid_reject}：用例1执行失败`；
-- 结果文件里对应的 `result` 单元格会写入 `【跳过】...`，而“请求没发出去就失败”的用例会写入 `【失败】...`。
+- 结果文件里对应的 `result` 单元格会写入 `跳过：...`，失败用例写入 `失败：...`（接口返回原文在 `response` 列，两者分开）；
 
 所以报告不会再有“1 条根因 + 20 条变量未定义”的噪声，而是“1 条根因 + N 条 skipped”，从第一条失败用例开始查即可。
 
@@ -330,7 +331,7 @@ export CURRENT_PROJECT=调试
 
 **`reports/results/{源用例文件名}_{时间戳}_通过{N}_失败{N}_跳过{N}.xlsx`**，例如 `reports/results/test_approval_20260915_163116_通过8_失败4_跳过21.xlsx`
 
-- 文件内容 = **源用例文件的完整副本**（所有 sheet、所有列、样式原样保留）+ 本次执行的 `result` 列；
+- 文件内容 = **源用例文件的完整副本**（所有 sheet、所有列、样式原样保留）+ 本次执行的 `result` 列（用例结果）与 `response` 列（接口返回）；
 - 源用例文件从此**只读**，跑测试不会再让它产生改动（git 里也不会再出现 xlsx 二进制 diff）；
 - 同一轮执行产生的多个结果文件（如假勤主用例 + 调试用例）共用同一个时间戳；
 - 输出目录可用环境变量 `RESULT_PATH` 覆盖（默认 `reports/results/`）；
@@ -412,7 +413,7 @@ allure generate ./reports/temp -o ./reports/allure-reports --clean     # 生成�
 
 ### Q7 新增一列会影响执行吗？
 
-不会。列名作为字典 key 使用，多余列会被忽略；只要第 1 行表头存在即可。但 `result` 列是按表头名识别的，把表头 `result` 改名后，结果会写到结果文件的默认第 7 列。
+不会。列名作为字典 key 使用，多余列会被忽略；只要第 1 行表头存在即可。但 `result` / `response` 列是按表头名识别的，把表头改名后对应的内容就不会写入结果文件（启动时会打 WARNING）。
 
 ### Q8 Excel 里空行会报错吗？
 

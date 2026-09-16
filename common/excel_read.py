@@ -37,14 +37,22 @@ class Excel:
                     continue
                 title = [sheet_obj.cell(row=1, column=col).value for col in range(1, max_col + 1)]
 
-                # 定位结果列（默认第7列），避免回写结果时硬编码列号
-                result_col = 7
+                # 定位结果列与接口返回列（按表头名匹配，避免硬编码列号）
+                # result 列：用例结果（通过 / 失败：原因 / 跳过：原因）
+                # response 列：接口返回原文（没有这列时只写用例结果，不写接口返回）
+                result_col, response_col = None, None
                 for col, header in enumerate(title, start=1):
-                    if isinstance(header, str) and header.strip().lower() == 'result':
+                    if not isinstance(header, str):
+                        continue
+                    name = header.strip().lower()
+                    if name == 'result' and result_col is None:
                         result_col = col
-                        break
-                else:
-                    logger.warning(f"Sheet[{sheet}]表头未找到result列，回写结果将默认使用第7列")
+                    elif name in ('response', '返回结果') and response_col is None:
+                        response_col = col
+                if result_col is None:
+                    logger.warning(f"Sheet[{sheet}]表头未找到result列，用例结果不会写入结果文件（建议加一列表头 result）")
+                if response_col is None:
+                    logger.warning(f"Sheet[{sheet}]表头未找到response列，接口返回不会写入结果文件（建议加一列表头 response）")
 
                 # 读取用例数据（从第二行开始）
                 for row in range(2, max_row + 1):
@@ -56,7 +64,8 @@ class Excel:
                     case_dict = dict(zip(title, row_data))
                     case_dict["sheet"] = sheet  # 标记用例所属Sheet
                     case_dict["row_num"] = row  # 标记用例所在行号，用于后续写入结果
-                    case_dict["result_col"] = result_col  # 标记结果列，用于后续写入结果
+                    case_dict["result_col"] = result_col  # 标记结果列，用于后续写入用例结果
+                    case_dict["response_col"] = response_col  # 标记接口返回列，用于后续写入接口返回
                     all_data.append(case_dict)
 
             logger.info(f"Excel用例读取完成，共获取{len(all_data)}条有效用例")
@@ -72,7 +81,16 @@ class Excel:
 
     @classmethod
     def record_result(cls, filename, sheet, row, column, result):
-        """缓存一条用例的执行结果（不立即写文件）"""
+        """缓存一条用例的执行结果（不立即写文件，会话结束时由 save_results() 统一写回）
+
+        :param filename: 源用例文件路径（结果文件是它的副本）
+        :param sheet: 用例所在 Sheet
+        :param row: 用例所在行号
+        :param column: 目标列号；传 None（例如 Excel 里没有 response / result 列）时忽略本条
+        :param result: 要写入单元格的内容
+        """
+        if column is None:
+            return
         cls._pending_results.append((filename, sheet, row, column, result))
 
     @classmethod

@@ -29,8 +29,9 @@ def reset():
 
 
 def record_outcome(outcome, case_id=None, name=None):
-    """记录一条用例的执行结果：passed / failed / skipped
+    """记录一条用例的执行结果
 
+    :param outcome: 结果类型，取值 passed / failed / skipped
     :param case_id: 用例编号（失败时记录，便于通知里列出失败用例）
     :param name: 用例名称
     """
