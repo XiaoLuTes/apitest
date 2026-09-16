@@ -9,18 +9,17 @@
 3、机器人限制「20 条 / 分钟」，所以只在会话结束时聚合发送一条。
 """
 import os
-
 import requests
-
+from config.setting import setting
 from common.logger import logger
 
-# 群机器人 markdown 内容上限 4096 字节（UTF-8），留点余量
-MAX_CONTENT_BYTES = 4000
-DEFAULT_TIMEOUT = 10
 
+def _truncate_bytes(text: str, max_bytes: int = None) -> str:
+    """按字节截断（企微限制的是字节数而不是字符数，1 个中文 = 3 字节）
 
-def _truncate_bytes(text: str, max_bytes: int = MAX_CONTENT_BYTES) -> str:
-    """按字节截断（企微限制的是字节数而不是字符数，1 个中文 = 3 字节）"""
+    上限取自 setting.WECOM_MAX_CONTENT_BYTES（默认 4000，企微硬性上限 4096），可用环境变量覆盖。
+    """
+    max_bytes = max_bytes or setting.WECOM_MAX_CONTENT_BYTES
     data = (text or "").encode("utf-8")
     if len(data) <= max_bytes:
         return text
@@ -36,7 +35,7 @@ def send_markdown(webhook: str, content: str) -> bool:
         resp = requests.post(
             webhook,
             json={"msgtype": "markdown", "markdown": {"content": _truncate_bytes(content)}},
-            timeout=DEFAULT_TIMEOUT,
+            timeout=setting.WECOM_TIMEOUT,
         )
         result = resp.json()
         if result.get("errcode") == 0:
@@ -66,7 +65,7 @@ def send_file(webhook: str, file_path: str) -> bool:
             logger.warning(f"上传文件到企业微信失败：{upload.text[:200]}")
             return False
         resp = requests.post(
-            webhook, json={"msgtype": "file", "file": {"media_id": media_id}}, timeout=DEFAULT_TIMEOUT
+            webhook, json={"msgtype": "file", "file": {"media_id": media_id}}, timeout=setting.WECOM_TIMEOUT
         )
         ok = resp.json().get("errcode") == 0
         logger.info(f"结果文件推送{'成功' if ok else '失败'}：{os.path.basename(file_path)}")

@@ -52,6 +52,9 @@ class Setting:
         self.ALLURE_RESULT_PATH = self._get_env_var("ALLURE_RESULT_PATH", f"{self.REPORT_PATH}temp/")
         # 企业微信群机器人 Webhook：配置后会话结束自动推送执行结果卡片（留空则不发送，本地执行无感）
         self.WECOM_WEBHOOK = self._get_env_var("WECOM_WEBHOOK", "")
+        # 企业微信通知：markdown 内容上限（字节，企微硬性上限 4096）与请求超时（秒）
+        self.WECOM_MAX_CONTENT_BYTES = int(self._get_env_var("WECOM_MAX_CONTENT_BYTES", "4000"))
+        self.WECOM_TIMEOUT = int(self._get_env_var("WECOM_TIMEOUT", "10"))
         self.BASE_URLS = {
             "生产环境": {
                 "管理端": "https://admin.gsrtech.com",

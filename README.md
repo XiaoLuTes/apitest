@@ -264,11 +264,13 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 | `RESULT_PATH` | 用例执行结果文件输出目录（默认 `reports/results/`） |
 | `ALLURE_RESULT_PATH` | allure 原始结果目录（默认 `reports/temp/`，须与 pytest.ini 里的 `--alluredir` 一致） |
 | `WECOM_WEBHOOK` | 企业微信群机器人 Webhook（留空则不发送通知；也可用系统环境变量注入） |
+| `WECOM_MAX_CONTENT_BYTES` | 通知内容上限（字节），默认 4000（企微硬性上限 4096） |
+| `WECOM_TIMEOUT` | 通知请求超时（秒），默认 10 |
 | `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_PORT` / `DB_NAME` | 数据库连接信息 |
 | `DB_TIMEOUT` | 数据库连接超时（默认 30 秒） |
 
 **环境变量覆盖**（不改代码即可切换，便于 Jenkins 传参）：
-`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`
+`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`、`WECOM_MAX_CONTENT_BYTES`、`WECOM_TIMEOUT`
 
 ```bat
 :: Windows (cmd)

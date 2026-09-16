@@ -67,7 +67,7 @@ class Executor:
             row_num = file['row_num']  # 用例真实行号，用于回写结果
             result_col = file.get('result_col', 7)  # 结果列，用于回写结果
             case_id = file['case_id']
-
+            allure.dynamic.title(str(file.get('name') or case_id))
             # 1、依赖检查：本条用例引用的变量若来自失败 / 跳过的上游用例，直接跳过，避免“一条根因 + N 条连环红”
             extract_keys = VariableHandle.find_extract_keys(file.get('extract'))
             blocked = {
