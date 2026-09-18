@@ -75,8 +75,8 @@ class VariableHandle:
                 match = re.search(r'\$\{([^}]+)}', str_data)
                 if not match:
                     break
-                full_match = match.group(0)  # 例如 ${headers2}
-                var_name = match.group(1)    # 例如 headers2
+                full_match = match[0]
+                var_name = match[1]
                 # 读取变量（取不到立即抛错，不再保留字面量继续执行）
                 var_value = VariableHandle._get_variable(var_name)
                 # 递归替换变量值内部的嵌套变量
