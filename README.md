@@ -1,7 +1,7 @@
 # 接口自动化测试框架
 
 > 假勤 / 审批流项目的 **pytest + Excel 数据驱动** 接口自动化测试框架
-> 最后更新：2026-09-15 ｜ 本文描述的是**当前代码的实际行为**，与旧版 `readme.txt` 的差异见 [第 12 节](#12-文档变更记录)
+> 最后更新：2026-09-24 ｜ 本文描述的是**当前代码的实际行为**，与旧版 `readme.txt` 的差异见 [第 12 节](#12-文档变更记录)
 
 | 项目 | 说明 |
 | --- | --- |
@@ -31,7 +31,7 @@
 ## 1. 框架简介
 
 - **数据驱动**：用例写在 Excel 里，一行一条，新增用例不需要改代码。
-- **一条用例**可以是：只发 HTTP 请求 / 只操作数据库（`db_select`、`db_update`）/ 先发请求再查库校验。
+- **一条用例**可以是：只发 HTTP 请求（含 `upload` 文件上传）/ 只操作数据库（`db_select`、`db_update`）/ 先发请求再查库校验。
 - **用例之间有顺序依赖**：登录拿 token → 发起审批拿 instanceId → 查任务拿 taskId，靠"变量"串联（⚠️ 详见 [FAQ Q2](#q2-为什么第一条用例失败后后面一大片全失败)）。
 - **会话级自动化**：会话开始时重置运行时变量文件；会话结束时把执行结果**一次性**写入独立的结果文件（源用例文件只读）。
 
@@ -66,6 +66,7 @@ api/
 │
 ├── testcase/                    # 用例
 │   ├── test_approval.xlsx       # 假勤项目用例（业务主用例集）
+│   ├── test_payroll.xlsx        # payroll 项目用例（CURRENT_PROJECT=payroll 时执行）
 │   ├── test_test.xlsx           # 框架调试用例（数据库增删，作为收尾清理）
 │   └── test_yl.yaml             # yaml 格式用例（当前未接入执行链路，见 11.2）
 │
@@ -149,9 +150,9 @@ python run.py
 | 1 | `case_id` | 是 | 用例编号。**只用于日志和 allure 标题**，不影响结果写入位置（结果按用例真实行号写入，编号可以不连续）。建议同一 sheet 内唯一 |
 | 2 | `name` | 是 | 用例名称。**以 `管理端` / `员工端` 开头决定用哪个域名**；不匹配时报 WARNING 并用 `DEFAULT_URL`（默认管理端），路径仍正常拼接。支持 `${变量}`，会作为 allure 标题 |
 | 3 | `headers` | 是 | 请求头。推荐直接写变量，如 `${headers_admin}`；也可写 JSON 文本 |
-| 4 | `method` | 是 | 大小写不敏感。HTTP：`get/post/put/patch/delete/head/options`；数据库：`db_select` / `db_update` |
+| 4 | `method` | 是 | 大小写不敏感。HTTP：`get/post/put/patch/delete/head/options`；文件上传：`upload`（等价 POST）、`upload:put`、`upload:patch`；数据库：`db_select` / `db_update`。⚠️ `head` / `options` 会忽略 `data` |
 | 5 | `url` | 是 | 接口路径，可含变量，如 `/api/center/template/reject/task/${taskid}?isProxy=true`。以 `http://`、`https://` 开头则视为完整地址，不再拼域名 |
-| 6 | `data` | 是 | `get` → 查询参数字符串（`pageNum=1&pageSize=10`）；`post/put/patch/delete` → JSON 文本请求体（变量可嵌在字符串里）；`db_*` → SQL 语句 |
+| 6 | `data` | 是 | `get` → 查询参数字符串（`pageNum=1&pageSize=10`）；`post/put/patch/delete` → JSON 文本请求体（变量可嵌在字符串里）；`upload` → 本地文件路径，或 JSON 对象（见 [5.4](#54-文件上传upload)）；`db_*` → SQL 语句 |
 | 7 | `response` | **留空** | **接口返回原文**：跑完自动写入响应文本；请求没发出去（变量缺失 / 被跳过）时为空 |
 | 8 | `extract` | 否 | 变量提取，JSON 文本，如 `{"taskid": "$.data.taskId"}`。表达式以 `$` 开头 → JSONPath；其它 → 正则（**推荐 JSONPath**）。取不到内容本条用例直接失败 |
 | 9 | `validata` | 否 | 断言，JSON 文本。留空 → HTTP 用例跳过断言（⚠️ 数据库用例语义不同，见 5.3） |
@@ -216,6 +217,45 @@ python run.py
 
 ---
 
+### 5.4 文件上传（upload）
+
+`method` 填 `upload`（等价 POST）、`upload:put` 或 `upload:patch`；`data` 有两种写法。
+
+**写法一：只传一个文件**
+
+| 列 | 值 |
+| --- | --- |
+| `method` | upload |
+| `data` | `testcase/模板.xlsx` |
+
+multipart 字段名固定为 `file`。
+
+**写法二：带表单字段（JSON）**
+
+```json
+{"file": "testcase/附件/对账单.xlsx", "file_field": "settlementFile", "gsrPayrollReconciliationPackageId": "509"}
+```
+
+| 键 | 说明 |
+| --- | --- |
+| `file` | **必填**：本地文件路径（相对路径以项目根目录为基准，也可写绝对路径） |
+| `file_field` | multipart 里的字段名，默认 `file` |
+| 其它键 | 原样作为普通表单字段发送；值只支持字符串 / 数字，不支持嵌套对象或数组 |
+
+变量正常可用，例如 `{"file": "${upload_file}", "file_field": "settlementFile", "gsrPayrollReconciliationPackageId": "${package_id}"}`。⚠️ 变量外层**建议保留引号**（写 `"${var}"`），否则变量值是字符串时会解析失败。
+
+**注意事项**
+
+- **不要写 `Content-Type`**：upload 分支会**强制剔除**它，由 requests 自己生成 `multipart/form-data; boundary=...`。从浏览器“复制为 cURL”抄来的 `Content-Type`（带旧 boundary）、`Content-Length`、`Host` 都是客户端自动生成的，抄进去会让服务端解析不出任何字段。
+- **相对路径以项目根目录为基准**（`setting.BASE_DIR`，即 `config/` 的上一级），不依赖当前工作目录；从任意目录启动、Jenkins 用 `dir()` 切目录都能正确解析。
+- 服务端收到的**只有文件名**（不含目录），即 `os.path.basename` 的结果。
+- 上传的响应就是普通 HTTP 响应，`extract` / `validata` 用法与其它接口一致（响应不是合法 JSON 时断言会直接失败）。
+- 框架**不会修改被上传的文件**，也不做任何文件内容处理；上传的就是磁盘上的原文件。
+
+> 上传对账单这类“后端会校验文件内容”的接口，文件本身必须已满足校验规则，详见 [11.3](#113-其他已知限制)。
+
+---
+
 ## 6. 变量机制
 
 - **全局变量**：`variable/all.yaml`（按 `ENV` 选择），适合放账号、规则 ID、公共请求头等。
@@ -256,7 +296,7 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 | 配置项 | 说明 |
 | --- | --- |
 | `ENV` | 环境：测试环境 / 预生产环境 / 生产环境。决定 `BASE_URLS`（域名）和 `ALL_YAML`（全局变量文件） |
-| `CURRENT_PROJECT` | 用例项目：假勤 / 调试。决定 `TEST_FLIELOAD`（跑哪个 Excel） |
+| `CURRENT_PROJECT` | 用例项目：假勤 / payroll / 调试。决定 `TEST_FLIELOAD`（跑哪个 Excel） |
 | `BASE_URLS` / `TEST_URL` | 各端域名（管理端 / 员工端） |
 | `DEFAULT_URL` | 用例名没写"管理端 / 员工端"前缀时使用的默认端（默认 `管理端`） |
 | `HTTP_TIMEOUT` | 接口请求默认超时秒数（默认 30），未显式传 `timeout` 时生效 |
@@ -434,16 +474,16 @@ allure generate ./reports/temp -o ./reports/allure-reports --clean     # 生成�
 ### 11.1 安全（建议尽快处理）
 
 - ✅ **已处理（本轮重构）**：数据库账号密码已从 `config/setting.py` 移到项目根目录的 `.env`（`.gitignore` 已忽略 `.env`）；`variable/all.yaml` 里 `headers_user` 的字面 token 改成 `${user_token}`（值从 `.env` 注入）；`testcase/test_yl.yaml` 里的 Basic token 已移除。优先级为 **系统环境变量 > `.env` > `setting.py` 默认值**，所以 Jenkins 上直接传环境变量即可，不需要落地 `.env` 文件。
-- ⚠️ **还需要手工做两件事**：
-  1. **轮换凭据**：密码 / token 仍然存在于 **git 历史**里，改文件不等于删除历史，建议在服务端轮换一次；
-  2. **把运行时文件移出版本控制**：`variable/extract.yaml`（含运行时 token）与 `.idea/` 目前还是**已跟踪**状态，而 `.gitignore` 对已跟踪文件不生效：
+- ⚠️ **仍需手工做一件事**：
+  1. **轮换凭据**（未做）：密码 / token 仍然存在于 **git 历史**里，改文件不等于删除历史，建议在服务端改一次密码 / 让旧 token 失效；代码侧只需更新 `.env`。
+  2. **把运行时文件移出版本控制**（✅ 已完成）：`variable/extract.yaml`（含运行时 token）与 `.idea/` 已用下面的命令移出，本地文件保留：
 
 ```bash
 git rm --cached variable/extract.yaml
 git rm -r --cached .idea
 ```
 
-（只从版本控制移除，本地文件保留；`extract.yaml` 会在会话开始时自动重建，不影响执行）
+（`git rm --cached` 只从版本控制移除，本地文件保留；`extract.yaml` 每次会话开始会自动重建，不影响执行）
 - allure 报告里会记录**完整请求头（含 Authorization）**，注意报告文件的流转范围。
 
 ### 11.2 未接入的功能
@@ -455,7 +495,9 @@ git rm -r --cached .idea
 - 用例强依赖执行顺序与真实业务数据（账号 / 规则 ID / 日期等硬编码在用例里），换环境或换数据需要同步调整；前置失败时下游会自动 skip，但**被 skip 的用例本轮等于没有验证**，修好根因后必须重跑全量。
 - 结果文件是源用例文件的完整副本，每轮执行都会新增文件，需要定期清理 `reports/results/`。
 - `extract.yaml` 是单文件全局状态，**不支持并发执行**（多进程会互相覆盖）。
-- 没有 `.gitignore`，`__pycache__`、`.pytest_cache`、`reports` 目前都是未跟踪状态。
+- **带公式的 xlsx 不能用 openpyxl 改写**：这类文件（尤其是后端生成、还要传回后端的报表）经 openpyxl 读写后会**丢失公式的缓存值**（实测：某对账单 744 个缓存值掉到 64 个；`data_only=True` 会把 88 个公式直接清零），文件会被后端校验拒绝。若确需改动（例如只改 sheet 名），应改用 zip + 只替换 `xl/workbook.xml` 与 `docProps/app.xml` 文本的方案，其余部件字节保持不变。
+- **对账单上传目前需人工介入**：后端要求上传文件的 sheet 名等于结算包 code，而该 code 是每次运行动态产生的，写死的文件无法匹配。当前做法是手工用 WPS / Excel 改 sheet 名（会正常重算并保存缓存值）后再上传，该用例不适合放进自动用例表。
+- `__pycache__/`、`.pytest_cache/`、`reports/`、`*.log`、`.env`、`variable/extract.yaml`、`~$*.xlsx` 已由 `.gitignore` 忽略。
 
 ---
 
@@ -476,3 +518,5 @@ git rm -r --cached .idea
    - 超时配置 `HTTP_TIMEOUT`；
    - 变量依赖与自动跳过（含 `INVALIDATE_ON_ANY_FAILURE` 开关）；
    - 端前缀（管理端 / 员工端）的选择规则与默认端 `DEFAULT_URL`。
+6. **补充文件上传（`upload`）的用法**：`method` 新增 `upload:put` / `upload:patch`；`data` 支持“只传文件”与“带表单字段（JSON）”两种写法；补充 `Content-Type` 会被强制剔除、相对路径以项目根目录（`setting.BASE_DIR`）为基准等注意事项（见 [5.4](#54-文件上传upload)）。
+7. **更新安全与已知限制**：运行时文件已移出版本控制、`.gitignore` 已生效（含 `reports/`、`.env`、`variable/extract.yaml`），凭据轮换仍待处理；新增“带公式 xlsx 不能用 openpyxl 改写”与“对账单上传需人工介入”两条（见 [第 11 节](#11-安全与已知限制)）。

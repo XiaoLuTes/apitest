@@ -24,18 +24,23 @@ def _load_dotenv(path: str) -> None:
         pass
 
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 # 项目根目录下的 .env（与 config/ 同级）；Jenkins 等 CI 也可以直接用系统环境变量
-_load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+_load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 
 class Setting:
     def __init__(self):
         self.ENV = self._get_env_var("ENV", "测试环境")
+        self.BASE_DIR = BASE_DIR
         self.TEST_FLIELOADS = {
             "假勤": f"testcase/test_approval.xlsx",
-            "调试": f"testcase/test_test.xlsx"
+            "调试": f"testcase/test_test.xlsx",
+            "payroll": f"testcase/test_payroll.xlsx"
         }
-        self.CURRENT_PROJECT = self._get_env_var("CURRENT_PROJECT", '假勤')
+        self.CURRENT_PROJECT = self._get_env_var("CURRENT_PROJECT", 'payroll')
         self.TEST_FLIELOAD = self.TEST_FLIELOADS[self.CURRENT_PROJECT]  # excel测试用例路径
         self.TEST_FLIELOAD_YAML = f"testcase/test_yl.yaml"  # yaml测试用例路径
         self.EXTRACTFILE = f"variable/extract.yaml"  # 临时变量文件路径
@@ -98,6 +103,7 @@ class Setting:
         # 例如 all.yaml 里 headers_user 用的就是 ${user_token}
         self.ENV_VARIABLES = {
             "user_token": self._get_env_var("USER_TOKEN", ""),
+            "access_token_admin": self._get_env_var("ACCESS_TOKEN_ADMIN", ""),
         }
 
     @staticmethod
