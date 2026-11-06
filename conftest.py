@@ -22,17 +22,19 @@ def execute_session():
     try:
         yield
     finally:
-        # 1、把缓存的执行结果写入结果文件（源用例文件不再被修改）；2、关闭会话级数据库连接
         result_files = excel_read.Excel.save_results()
-        # 把结果文件作为附件附加到 allure 报告（报告里会出现一条可下载的汇总记录）
         allure_util.export_result_files(result_files, title=f"用例执行结果文件（{run_state.summary_text()}）")
+        # 总数
         logger.info(f"本次执行汇总：{run_state.summary_text()}")
+        # 分表
+        logger.info(f"分表统计：{run_state.sheet_summary_text()}")
         # 企业微信通知：在 .env / 系统环境变量里配置 WECOM_WEBHOOK 后，会话结束自动推送执行结果
         build_url = os.environ.get("BUILD_URL")   # Jenkins 会注入构建地址，本地执行时为 None
         wecom.notify(
             setting.WECOM_WEBHOOK,
             project=setting.CURRENT_PROJECT,
-            summary=run_state.summary_text(),
+            summary=run_state.summary_text(),  # 推送汇总数据
+            sheet_summary=run_state.sheet_summary_text(),  # 推送分表数据
             failed_cases=[f"{case_id}-{name}" for case_id, name in run_state.failed_cases()],
             result_files=result_files,
             report_url=f"{build_url}allure/" if build_url else None,

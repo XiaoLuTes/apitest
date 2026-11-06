@@ -9,6 +9,23 @@ headers_admin:
    Authorization: Bearer ${access_token_admin}
    Accept: application/json, text/plain, */*
    Connection: keep-alive
+# 或签矩阵用例的请假日期（按组独立，避免不同用例的假期重叠；重复执行时改这里换一批日期）
+leave_A_start: '2026-11-24 00:00:00.000'
+leave_A_end: '2026-11-25 23:59:59.000'
+leave_B_start: '2026-11-26 00:00:00.000'
+leave_B_end: '2026-11-27 23:59:59.000'
+leave_C_start: '2026-11-30 00:00:00.000'
+leave_C_end: '2026-12-01 23:59:59.000'
+# G组：同一时间段重复提交 / 时间段冲突（G=主单，G2=部分重叠，G3=相邻不重叠）
+leave_G_start: '2026-12-14 00:00:00.000'
+leave_G_end: '2026-12-15 23:59:59.000'
+leave_G2_start: '2026-12-15 00:00:00.000'
+leave_G2_end: '2026-12-16 23:59:59.000'
+leave_G3_start: '2026-12-16 00:00:00.000'
+leave_G3_end: '2026-12-17 23:59:59.000'
+# H组：撤回后额度回滚
+leave_H_start: '2026-12-18 00:00:00.000'
+leave_H_end: '2026-12-21 23:59:59.000'
 headers_user:
    Authorization: Bearer ${user_token}
    Connection: keep-alive

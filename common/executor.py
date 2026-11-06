@@ -53,7 +53,7 @@ class Executor:
         """把用例标记为跳过：写结果文件、计入跳过数、把它要产出的变量标记为不可信"""
         logger.warning(f"用例 {case_id}-{file.get('name')} 跳过: {reason}")
         self._record_verdict(file, f"跳过：{reason}")
-        run_state.record_outcome("skipped")
+        run_state.record_outcome("skipped", sheet=file.get('sheet'))  # 按sheet页统计跳过
         run_state.mark_untrusted(extract_keys, f"用例{case_id}跳过")
         pytest.skip(f"用例 {case_id} 跳过：{reason}")
 
@@ -133,7 +133,7 @@ class Executor:
             logger.info(f"测试通过")
             self._record_verdict(file, "通过")
             run_state.mark_trusted(extract_keys)
-            run_state.record_outcome("passed")
+            run_state.record_outcome("passed", sheet=file.get('sheet'))  # 按sheet页统计成功数
 
         except UpstreamDependencyError as e:
             # 2、替换变量时才发现依赖失败（例如 ${headers_x} 内部引用了失败用例产出的 token）→ 同样按跳过处理
@@ -146,7 +146,8 @@ class Executor:
             # 3、本条用例要产出的变量标记为不可信，让依赖它的后续用例跳过而不是连环报错
             if setting.INVALIDATE_ON_ANY_FAILURE or not extract_done:
                 run_state.mark_untrusted(extract_keys, f"用例{case_id_str}执行失败")
-            run_state.record_outcome("failed", case_id_str, name_str)
+            # 失败时带上 sheet 名，按表统计
+            run_state.record_outcome("failed", case_id_str, name_str, sheet=file.get('sheet'))
             # 把失败原因写进结果文件的 result 列（接口返回写在 response 列）
             one_line = " ".join(str(e).split())[:500]
             self._record_verdict(file, f"失败：{one_line}")

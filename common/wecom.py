@@ -89,7 +89,7 @@ def send_file(webhook: str, file_path: str) -> bool:
 
 
 def notify(webhook: str, project: str, summary: str, failed_cases=None,
-           result_files=None, report_url: str = None) -> bool:
+           result_files=None, report_url: str = None, sheet_summary: str = None) -> bool:
     """组装并发送执行结果卡片（webhook 为空则跳过）
 
     :param webhook: 群机器人 Webhook 地址
@@ -98,6 +98,7 @@ def notify(webhook: str, project: str, summary: str, failed_cases=None,
     :param failed_cases: 失败用例列表 ["5-年假（按duration算endtime）", ...]
     :param result_files: 本次生成的结果文件路径列表
     :param report_url: allure 报告链接（Jenkins 下自动取 BUILD_URL）
+    :param sheet_summary: 分表统计文本，例如「数据准备 通过12 失败0 跳过0 | 测试执行 通过2 失败1」；为空则不显示
     """
     reason = _disabled_reason(webhook)
     if reason:
@@ -110,6 +111,9 @@ def notify(webhook: str, project: str, summary: str, failed_cases=None,
         f"> 项目：{project}",
         f"> 结果：{summary}",
     ]
+    # 分表统计（可选）：传了才加一行，没传时卡片与以前完全一样
+    if sheet_summary:
+        lines.append(f"> 分表：{sheet_summary}")
     if failed_cases:
         show = "、".join(failed_cases[:10])
         more = f"（共 {len(failed_cases)} 条，仅列前 10 条）" if len(failed_cases) > 10 else ""

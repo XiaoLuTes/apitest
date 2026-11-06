@@ -39,7 +39,8 @@ class Setting:
             "假勤": f"testcase/test_approval.xlsx",
             "调试": f"testcase/test_test.xlsx",
             "payroll": f"testcase/test_payroll.xlsx",
-            "审批流或签自动通过": f"testcase/test_approval_auto_approved.xlsx"
+            "审批流或签自动通过": f"testcase/test_approval_auto_approved.xlsx",
+            "审批流或签矩阵": f"testcase/test_approval_ouqian_matrix.xlsx"
         }
         self.CURRENT_PROJECT = self._get_env_var("CURRENT_PROJECT", '')
         self.TEST_FLIELOAD = self.TEST_FLIELOADS[self.CURRENT_PROJECT]  # excel测试用例路径
