@@ -1,8 +1,6 @@
 import json
-
 import allure
 import pytest
-
 from config.setting import setting
 from common import request_util, excel_read, run_state
 from common.logger import logger
@@ -22,7 +20,6 @@ class Executor:
 
     def build_url(self, name, path):
         """根据用例名称前缀选择端，并拼接用例中的接口路径
-
         修复点：原实现中「用例名称未匹配到端」时只取了 base_url，把用例里的 url 路径丢掉了，
         会请求到站点根路径；这里统一改为「环境地址 + 用例路径」。
         另外支持用例直接写全量 URL（http/https 开头），此时不再拼接环境地址。
@@ -156,8 +153,7 @@ class Executor:
             logger.error(f"用例 {case_id_str}-{name_str} 执行失败: {str(e)}")
 
         if error is not None:
-            # 用例级失败（断言失败 / 变量未配置 / 提取失败）不打回溯：失败原因在报错信息里已经写清楚了，
-            # 打回溯只会在控制台和 Jenkins 里刷出框架源码；真正的框架异常（bug）仍然保留完整回溯
+            # 用例级失败（断言失败 / 变量未配置 / 提取失败）不打回溯：失败原因在报错信息里已经写清楚了
             if isinstance(error, (AssertionError, ExtractValueError, VariableNotFoundError)):
                 pytest.fail(str(error), pytrace=False)
             raise error

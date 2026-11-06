@@ -90,7 +90,6 @@ class Setting:
             "true", "1", "yes", "y", "on")
 
         # 数据库配置
-        # 数据库配置：敏感信息不写进代码，真实值放在项目根目录的 .env 里
         # 优先级：系统环境变量 > .env > 这里的默认值
         self.DB_HOST = self._get_env_var("DB_HOST", '')
         self.DB_USER = self._get_env_var("DB_USER", '')

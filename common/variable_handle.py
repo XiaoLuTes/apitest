@@ -29,7 +29,7 @@ class ExtractValueError(Exception):
 class UpstreamDependencyError(Exception):
     """依赖的前置用例失败，变量未产出 / 不可信
 
-    这类情况不算“用例本身写错”，由执行器捕获后把当前用例标记为 skip，
+    由执行器捕获后把当前用例标记为 skip，
     避免出现“一条根因 + N 条连环红”的报告噪声。
     """
     pass
@@ -213,7 +213,6 @@ class VariableHandle:
     def extract_value(req: Any, extract: Any) -> None:
         """提取变量并写入yaml
 
-        提取表达式判定规则（明确化，不再靠字符串猜测）：
         - 以 $ 开头：按 JSONPath 提取
         - 其余：按正则提取，有捕获组时取第1个捕获组，否则取整个匹配内容
         """
@@ -243,7 +242,6 @@ class VariableHandle:
                     yaml_util.write_yaml({key: result[0]})
                     logger.info(f"JSONPath提取成功: {key} = {result[0]}")
                 else:
-                    # 修复：原先只告警不报错，导致后续用例拿着不存在的变量继续跑
                     raise ExtractValueError(f"JSONPath {expr} 未提取到内容，变量[{key}]未写入")
             # 正则提取
             else:

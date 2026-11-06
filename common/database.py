@@ -33,7 +33,7 @@ class DatabaseUtils:
         """建立数据库连接"""
         # 配置缺失时给出明确提示（数据库密码等敏感配置放在项目根目录的 .env 里，不入库）
         missing = [name for name, value in (("DB_HOST", self.host), ("DB_USER", self.user),
-                                           ("DB_PASSWORD", self.password), ("DB_NAME", self.database)) if not value]
+                                            ("DB_PASSWORD", self.password), ("DB_NAME", self.database)) if not value]
         if missing:
             raise RuntimeError(f"数据库配置缺失：{','.join(missing)}；请在项目根目录的 .env（或系统环境变量）中配置后重试")
 
@@ -63,10 +63,11 @@ class DatabaseUtils:
         except Exception as e:
             logger.error(f"数据库连接失败: {e}")
             # MySQL8的 caching_sha2_password / sha256_password认证需要 cryptography包：
-            #服务端缓存过密码时走 fast auth不需要它，一旦服务器重启或改密码导致缓存失效就会报错
+            # 服务端缓存过密码时走 fast auth不需要它，一旦服务器重启或改密码导致缓存失效就会报错
             if "cryptography" in str(e):
-                logger.error("缺少依赖 cryptography：请在当前 Python环境执行 pip install cryptography（或 pip install -r requirements.txt）")
-            #保留原始异常与堆栈（原来 raise Exception会把真正的错误信息丢掉）
+                logger.error(
+                    "缺少依赖 cryptography：请在当前 Python环境执行 pip install cryptography（或 pip install -r requirements.txt）")
+            # 保留原始异常与堆栈（原来 raise Exception会把真正的错误信息丢掉）
             raise
 
     def close_database_connection(self):
