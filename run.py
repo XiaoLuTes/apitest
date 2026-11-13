@@ -103,6 +103,10 @@ def main(argv):
     if argv[0] in ("-l", "--list", "list"):
         print_list()
         return 0
+    if argv[0] == "lint":
+        # 用例静态检查（执行前的第一道机器初审）
+        from tools.lint_cases import main as lint_main
+        return lint_main(argv[1:])
 
     suite = argv[0].lower()
     if suite not in ("api", "ui", "all"):

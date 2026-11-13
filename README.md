@@ -57,6 +57,7 @@ python -m playwright install chromium
 
 ```powershell
 python run.py --list                              # 查看所有用例集与项目名
+python run.py lint                                # 用例静态检查（执行前必跑，秒级）
 python run.py api 薪资包结算                        # 跑接口用例
 python run.py ui 薪资结算包收款包链路                 # 跑 UI 用例
 python run.py all                                 # 两个用例集各跑 .env 里的默认项目
@@ -89,14 +90,38 @@ $env:TEST_SUITE="api"; $env:API_PROJECT="薪资包结算"; python -m pytest api 
 - 接口：把 Excel 放到 `api/testcase/`，在 `TEST_FLIELOADS` 里加一行 `"项目名": "testcase/xxx.xlsx"`；
 - UI：把 YAML 放到 `ui/testcases/`，在 `PROJECT_CONFIGS` 里加一项（页面对象、定位器、用例路径）。
 
-## 4. 详细文档
+## 4. 用例静态检查（lint）
+
+执行前先跑一遍，把「格式/引用」类错误（一跑就崩、或静默空转）挡在执行前面。不连数据库、不连业务系统、不需要 token。
+
+```powershell
+python run.py lint                       # 等价于 python tools/lint_cases.py，全查
+python run.py lint --suite api           # 只查接口用例
+python run.py lint --suite ui            # 只查 UI 用例
+python run.py lint --project 薪资包结算    # 只查指定项目
+python run.py lint --file api/testcase/x.xlsx
+python run.py lint --strict              # 警告也算失败（CI 门禁）
+python tools/selftest_lint.py            # lint 自身的回归自测（验证每条规则都能命中）
+```
+
+检查内容：
+
+| 侧 | 规则 |
+| --- | --- |
+| 接口 | sheet 列数/必需列/重复列头；method 合法性；db_select/db_update 的 SQL 与断言写法（含“SET autocommit 写进断言列”这类坑）；editexcel 必填项；download 的 data 结构；retry 列取值；validata/jsonpath/key 格式；extract 格式；`${变量}` 是否在 all.yaml/.env/前序 extract/download var 中 |
+| UI | action 合法性；element 是否存在于定位器文件（含相近名建议）；check_exists 只允许 存在/不存在；wait 必须是整数；edit_excel 的 expected 必须为 JSON；save_text/save_value 的 data 必须是变量名；YAML 占位符未加引号（被解析成 dict）；`${var}` 与 `{var}` 混用；`{变量}` 是否已定义；用例 id 重复；page 是否合法 |
+
+合法动作集合从 `api/common/executor.py`、`api/common/request_util.py`、`ui/utils/executor.py` 反射得到，动作增删后自动跟随。
+退出码：存在错误 = 1（`--strict` 时警告也算），否则 0。`--format json` 可输出机器可读结果，便于接 CI 或后续自动提单。
+
+## 5. 详细文档
 
 两个用例集的完整写法说明保留在各自目录下：
 
 - 接口用例集：`api/README.md`（Excel 列定义、动作表、断言、变量、薪资包相关动作等）
 - UI 用例集：`ui/README.md`（YAML 步骤、动作、元素定位、扫码登录等）
 
-## 5. 说明
+## 6. 说明
 
 - 原有独立框架（`D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright`）保持原样，可继续单独使用；本仓库是合并后的新框架。
 - 所有路径都基于 `core/paths.py` 计算成绝对路径，因此在 PyCharm 里直接运行某个测试文件、或在任意目录执行 `python D:\lu\pycharm\autotest\run.py api ...` 都能正确定位用例与报告。
