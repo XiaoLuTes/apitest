@@ -183,9 +183,55 @@ def _all_result_files():
     return api + ui
 
 
-def history_failure_counts():
-    counts = {}
-    for path in _all_result_files():
+_BATCH_STAMP = re.compile(r"(\d{8}_\d{6})")
+
+
+def batch_of(path):
+    """结果文件所属的执行批次：文件名里的 YYYYmmdd_HHMMSS
+
+    命名见 api/common/excel_read.py::save_results()（同一轮执行的所有结果文件共用
+    同一个时间戳）与 ui/utils/yaml_load.py（YamlLoad.batch_id）。
+    取不到时间戳时用文件修改时间（分钟粒度）兜底。
+    """
+    # 用例文件名里也可能带日期，取最后一个时间戳（执行批次号由框架追加在末尾）
+    matched = _BATCH_STAMP.findall(os.path.basename(path))
+    if matched:
+        return matched[-1]
+    return time.strftime("%Y%m%d_%H%M", time.localtime(os.path.getmtime(path)))
+
+
+def _recent_result_files(days=0, now=None):
+    """最近 days 天内的结果文件（days<=0 表示不限）"""
+    files = _all_result_files()
+    if days and days > 0:
+        cutoff = (now or time.time()) - days * 86400
+        files = [f for f in files if os.path.getmtime(f) >= cutoff]
+    return files
+
+
+def history_days(default=30):
+    """历史统计窗口（天），0 = 不限；可用 ZENTAO_HISTORY_DAYS 覆盖"""
+    raw = os.getenv("ZENTAO_HISTORY_DAYS", str(default))
+    try:
+        return max(0, int(str(raw).split("#")[0].strip()))
+    except (TypeError, ValueError):
+        print("[提示] ZENTAO_HISTORY_DAYS=%r 不是整数，按 %d 天处理" % (raw, default))
+        return default
+
+
+def history_failure_counts(days=None):
+    """历史失败次数：按「执行批次」去重后统计（同一批次内只算 1 次）
+
+    批次 = 一次执行（结果文件名里的 YYYYmmdd_HHMMSS）。作用：
+      1) 同一轮执行里重复出现、或同一份结果被重复读取，都不会把次数刷高；
+      2) 叠加时间窗（默认 30 天），避免几周前已修复的旧失败一直算进「历史」，
+         让 --repeat 的「稳定复现」判定只反映近期情况。
+    """
+    if days is None:
+        days = history_days()
+    batches = {}                                 # (suite, case_id, name) -> {批次, ...}
+    for path in _recent_result_files(days):
+        batch = batch_of(path)
         try:
             items = (_read_api_failures(path) if path.lower().endswith((".xlsx", ".xlsm"))
                      else _read_ui_failures(path))
@@ -193,8 +239,8 @@ def history_failure_counts():
             continue
         for item in items:
             key = (item["suite"], item["case_id"], item["name"])
-            counts[key] = counts.get(key, 0) + 1
-    return counts
+            batches.setdefault(key, set()).add(batch)
+    return {key: len(value) for key, value in batches.items()}
 
 
 # ============================================================================
@@ -326,15 +372,33 @@ ATTENDANCE_KEYWORDS = ("假勤", "请假", "加班", "销假", "考勤", "审批
                        "leave", "attendance", "overtime", "holiday")
 
 
+PAYROLL_KEYWORDS = ("薪资", "结算", "收款", "payroll", "Payroll")
+
+
+def _as_int(value, default):
+    """把 env / 参数里的数字转 int（容忍行尾注释、空值，失败回落默认值）"""
+    try:
+        return int(str(value).split("#")[0].strip())
+    except (TypeError, ValueError):
+        return default
+
+
 def resolve_module(explicit, hint_text):
-    """模块按项目分流：payroll → 393（结算/收款），假勤 → 392（考勤/假勤）"""
-    payroll_module = int(os.getenv("ZENTAO_MODULE_PAYROLL", os.getenv("ZENTAO_MODULE", "393")))
-    attendance_module = int(os.getenv("ZENTAO_MODULE_ATTENDANCE", "392"))
+    """模块按项目分流：payroll → 393（结算/收款），假勤 → 392（考勤/假勤）
+
+    重要：hint_text 只能包含**这一条**用例的信息（项目名 + 用例名 + 结果文件名）。
+    传整批的名字会让一条假勤用例把整批单子都带到 392（历史 bug）。
+    """
+    payroll_module = _as_int(os.getenv("ZENTAO_MODULE_PAYROLL",
+                                       os.getenv("ZENTAO_MODULE", "393")), 393)
+    attendance_module = _as_int(os.getenv("ZENTAO_MODULE_ATTENDANCE", "392"), 392)
     if explicit:
-        return int(explicit), "命令行 --module"
-    text = hint_text or ""
+        return _as_int(explicit, payroll_module), "命令行 --module"
+    text = str(hint_text or "")
+    if any(k in text for k in PAYROLL_KEYWORDS):
+        return payroll_module, "本条用例关键词命中「薪资/结算/收款」"
     if any(k in text for k in ATTENDANCE_KEYWORDS):
-        return attendance_module, "项目/用例关键词命中「假勤」类"
+        return attendance_module, "本条用例关键词命中「假勤」类"
     return payroll_module, "默认 payroll"
 
 
@@ -343,14 +407,14 @@ def resolve_sources(args):
     from core.last_run import print_record, read_last_run
 
     if args.source:
-        return [args.source], os.path.basename(args.source)
+        return [args.source], ""
 
     record, age = read_last_run()
     if record:
         print_record(record, age)
         files = [f for f in (record.get("results") or []) if os.path.isfile(f)]
-        hint = "%s %s" % (record.get("project") or "",
-                          " ".join(os.path.basename(f) for f in files))
+        # hint 只带项目名；用例名/结果文件名在逐条判定时各自补，避免整批串味
+        hint = record.get("project") or ""
         if age > args.max_age_hours and not args.allow_stale:
             print("=" * 78)
             print("[结果过期] 本次执行结果是 %.1f 小时前的（保鲜期 %.0f 小时）"
@@ -365,7 +429,7 @@ def resolve_sources(args):
         return files, hint
 
     files = [f for f in latest_result_files() if f]
-    hint = " ".join(os.path.basename(f) for f in files)
+    hint = ""
     if files:
         newest = max(os.path.getmtime(f) for f in files)
         age = (time.time() - newest) / 3600.0
@@ -387,7 +451,9 @@ def main(argv=None):
                         help="结果保鲜期（小时），默认 24")
     parser.add_argument("--allow-stale", action="store_true", help="结果过期也允许提单")
     parser.add_argument("--repeat", type=int, default=int(os.getenv("ZENTAO_REQUIRE_REPEAT", "2")),
-                        help="稳定性要求：历史失败次数 >= 该值（默认 2）")
+                        help="稳定性要求：最近 N 天里至少有这么多「执行批次」失败过（默认 2）")
+    parser.add_argument("--history-days", type=int, default=None,
+                        help="历史失败统计窗口（天，0=不限）；默认读 ZENTAO_HISTORY_DAYS，否则 30")
     parser.add_argument("--include-env", action="store_true", help="同时提交环境类失败")
     parser.add_argument("--include-case", action="store_true", help="同时提交用例/数据类失败")
     parser.add_argument("--submit", action="store_true", help="真正提交（默认只出草稿）")
@@ -410,7 +476,10 @@ def main(argv=None):
         print("没有找到失败用例（先跑一遍用例，或用 --from 指定结果文件）")
         return 0
 
-    history = history_failure_counts()
+    days = args.history_days if args.history_days is not None else history_days()
+    history = history_failure_counts(days)
+    print("[稳定性] 历史失败次数 = 最近%s出现过的执行批次数（同一批次内只算 1 次）"
+          % ("（不限时间）" if days <= 0 else " %d 天" % days))
     allow = {"ASSERT"} | ({"ENV"} if args.include_env else set()) | ({"CASE"} if args.include_case else set())
     accepted, rejected = [], []
     for item in failures:
@@ -450,8 +519,10 @@ def main(argv=None):
         print(f"接口：{(picked[0].get('url') if picked else '（证据里没有接口记录）')}")
         print(f"截图：{'、'.join(os.path.basename(p) for p in evidence.get('screenshots') or []) or '（无）'}")
         if will_submit:
-            hint_all = hint + " " + " ".join(x['name'] for x in accepted)
-            module, module_reason = resolve_module(args.module, hint_all)
+            # 逐条判定：只用这条用例自己的信息（项目名 + 用例名 + 结果文件名）
+            hint_item = " ".join(x for x in (hint, str(item.get("name") or ""),
+                                             str(item.get("source") or "")) if x)
+            module, module_reason = resolve_module(args.module, hint_item)
             print(f"[模块] {module}（{module_reason}）")
             bug_id = evidence_bug.file_bug(evidence, submit=True, severity=args.severity,
                                           pri=args.pri, bug_type=args.bug_type, module=module)

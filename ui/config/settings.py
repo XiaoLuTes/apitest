@@ -140,6 +140,9 @@ class Settings:
         self.DB_PASSWORD = self._get_env_var("DB_PASSWORD", '')
         self.DB_PORT = self._get_env_var("DB_PORT", '')
         self.DB_NAME = self._get_env_var("DB_NAME", '')
+        # 允许执行数据库操作的环境白名单（逗号分隔）：默认只有测试环境。
+        # 护栏统一在 core/db_guard.py，UI 的 sql / sql_update 与接口用例集共用同一份判断
+        self.DB_ALLOWED_ENVS = self._get_env_var("DB_ALLOWED_ENVS", "测试环境")
 
         # ===================== 登录态：免扫码 token 注入 =====================
         # .env 的 ACCESS_TOKEN_ADMIN（浏览器登录后 GSR-Token cookie 的值）直接注入浏览器，

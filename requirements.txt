@@ -1,24 +1,31 @@
 # ====== 两个用例集共用的依赖（接口自动化 + UI 自动化）======
+# 安装：pip install -r requirements.txt   （在 autotest 根目录执行）
+# UI 用例还需要浏览器：python -m playwright install chromium
+
+# ---- 运行时基础 ----
 PyMySQL~=1.1.2
+# MySQL8 caching_sha2_password / sha256_password 认证需要
 cryptography~=50.0.1
 PyYAML~=6.0.1
 openpyxl~=3.1.0
 requests~=2.32.4
 jsonpath~=0.82
-python-dotenv>=1.0.0
 
-# 测试框架
+# ---- 测试框架与报告 ----
 pytest>=8.0.0
 allure-pytest>=2.15.0
 allure-python-commons>=2.15.0
 
-# 接口用例集：editexcel 动作需要调用本机 WPS/Excel（Windows only）
+# ---- 接口用例集：editexcel 需要调用本机 WPS/Excel 引擎（仅 Windows）----
 pywin32; sys_platform == "win32"
 
-# UI 用例集：Playwright 及其辅助库
+# ---- UI 用例集：Playwright 及其辅助库 ----
 playwright>=1.42
-loguru>=0.7.0
-PyAutoGUI~=0.9.54
+# 证据图渲染（api/common/evidence.py 的 render_evidence_png）
 Pillow>=10.0.0
-numpy>=1.26.0,<2.0.0
-ddddocr>=1.4.7
+
+# 说明：
+#   1. 验证码 OCR（ddddocr / numpy）与 pyautogui、loguru 已废弃：
+#      ui/utils/captcha_ocr.py 整个模块已注释停用（扫码登录由 token 注入替代），
+#      恢复该模块时再按需把依赖加回来。
+#   2. .env 由 core/env.py 自己解析，不依赖 python-dotenv。

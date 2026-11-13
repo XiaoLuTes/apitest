@@ -3,6 +3,7 @@ from pymysql import cursors
 from ui.utils.logger import logger
 from typing import List, Dict, Any
 from ui.config.settings import settings
+from core.db_guard import assert_env_allowed
 
 
 class DatabaseUtils:
@@ -16,7 +17,13 @@ class DatabaseUtils:
         self.connection = None
 
     def connect(self):
-        """建立数据库连接"""
+        """建立数据库连接（先过环境护栏：非测试环境直接拦下）
+
+        护栏实现与接口用例集共用 core/db_guard.py —— 这里的 sql / sql_update
+        同样属于"连库"，只有测试环境允许。
+        """
+        assert_env_allowed(getattr(settings, "ENV", ""),
+                           getattr(settings, "DB_ALLOWED_ENVS", "测试环境"))
         try:
             self.connection = pymysql.connect(
                 host=self.host,

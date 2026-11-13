@@ -22,10 +22,12 @@ autotest/
 ├─ AGENTS.md                 AI 执行手册（从需求拆分到提单的总流程，开工先读）
 ├─ PROMPT_bug_filing.md      禅道提单硬约束提示词
 ├─ .env / .env.example       统一配置（数据库、token、企微 Webhook、默认项目）
-├─ requirements.txt
+├─ requirements.txt          两个用例集共用的依赖（全仓唯一一份）
+├─ legacy/                   停用的历史用例/备份文件（不进 lint，不参与执行）
 ├─ core/                     公共层
 │   ├─ paths.py              统一路径（全部绝对化，任意工作目录可执行）
 │   ├─ env.py                统一 .env 加载（系统环境变量优先）
+│   ├─ db_guard.py           数据库环境护栏（只有测试环境可连库，api / ui 共用）
 │   └─ logger.py             日志工厂（API_/UI_ 前缀 → reports/logs）
 ├─ docs/
 │   ├─ 需求拆分模板.md        需求 → 规则矩阵 → 测试点 → 用例映射（阶段 1 产物模板）
@@ -35,7 +37,7 @@ autotest/
 │                             需求文档 / 测试数据
 ├─ tools/
 │   ├─ lint_cases.py         用例静态检查（执行前的机器初审）
-│   ├─ selftest_lint.py      lint 自身的回归自测（17 类埋错，验证规则是否生效）
+│   ├─ selftest_lint.py      lint 自身的回归自测（内置埋错用例，验证每条规则都能触发）
 │   └─ ui_capture.py         现场采集：登录 → 菜单导航 → 导出候选定位器/HTML/截图
 ├─ api/                      接口用例集
 │   ├─ common/               请求、断言、变量、Excel、数据库、重试、薪资包工具
@@ -81,6 +83,28 @@ python run.py api 薪资包管理查询             # 跑接口用例
 python run.py ui  薪资包管理查询 --headless  # 跑 UI 用例（免扫码）
 ```
 
+### 健康自检（**交接 / 改框架代码后必跑**）
+
+五条命令都只读：不写库、不提交单据，跑完不会留下业务脏数据。
+
+| 命令 | 期望 | 失败先看 |
+| --- | --- | --- |
+| `python run.py --list` | 接口 11 个项目 + UI 4 个项目 | `api/config/setting.py::TEST_FLIELOADS`、`ui/config/settings.py::PROJECT_CONFIGS` |
+| `python run.py lint` | 16 个文件 / 813 条 / 0 错误 / 45 警告 | 用例格式或 lint 规则（第 6 节） |
+| `python run.py check-token` | `[token] 预检通过` | `.env` 的 `ACCESS_TOKEN_ADMIN`（约 2 小时过期） |
+| `python run.py api 薪资包管理查询` | `10 passed`（约 1 秒） | 第 5 节登录与鉴权 |
+| `python run.py zentao --probe` | 登录成功 + 产品列表 + 默认字段 | 禅道账号 / 网络 / `ZENTAO_URL` |
+
+改过 `core/`、`api/common/`、`ui/utils/`、`tools/` 的话，再补两条：
+
+| 命令 | 期望 |
+| --- | --- |
+| `python tools/selftest_lint.py` | `[PASS] 全部规则命中，且正常用例无误报`（改过 lint 规则时必跑） |
+| `python -m py_compile core/*.py api/common/*.py ui/utils/*.py tools/*.py` | 无语法错误 |
+
+> 交接背景、能力边界、已知缺口见 `AGENTS.md` §0.2「交接状态与能力边界」。
+
+
 ### `.env` 配置项
 
 优先级：**系统环境变量 > `.env` > 代码默认值**。
@@ -97,7 +121,7 @@ python run.py ui  薪资包管理查询 --headless  # 跑 UI 用例（免扫码�
 | `DB_HOST/PORT/USER/PASSWORD/NAME` | 数据库（`sql` / `db_select` / `db_update` 类用例需要） |
 | `HTTP_TIMEOUT` | 接口默认超时（秒） |
 | `WECOM_WEBHOOK` / `WECOM_ENABLE` | 企业微信群机器人（执行结果 + 登录二维码推送） |
-| `LOGIN_USER` / `PASSWORD` | 仅 ddddocr 账号密码登录旧链路用（扫码/token 登录不需要） |
+| `LOGIN_USER` / `PASSWORD` | 仅旧的账号密码登录链路用（当前登录靠 token 注入，可不填） |
 
 ---
 
@@ -218,7 +242,7 @@ python tools/selftest_lint.py              # lint 自身的回归自测
 
 - 合法动作集合是从 `api/common/executor.py`、`api/common/request_util.py`、`ui/utils/executor.py` **源码反射**出来的，动作增删后自动跟随。
 - 退出码：有错误 = `1`（`--strict` 时警告也算），否则 `0`。
-- 当前全量结果：**17 个文件 / 827 条用例 / 0 错误 / 49 警告**。警告全部是「存量用例文件缺 `场景`/`场景说明` 列」「调试文件有空行」这类提示，**不阻塞执行**；存量文件按约定不回填，新用例必须带这两列（模板已内置）。
+- 当前全量结果：**16 个文件 / 813 条用例 / 0 错误 / 45 警告**。警告全部是「存量用例文件缺 `场景`/`场景说明` 列」「调试文件有空行」这类提示，**不阻塞执行**；存量文件按约定不回填，新用例必须带这两列（模板已内置）。
 
 ---
 
@@ -433,8 +457,9 @@ UI 单 [#9782](http://172.21.100.100:8101/zentao/bug-view-9782.html)（带页面
 | 用例或数据问题（`CASE`） | ❌ 不提 | 变量未定义、未查询到数据、元素查找超时、参数错误 |
 | 其它（`UNKNOWN`） | ❌ 不提 | 归不了类，先人工看 |
 
-稳定性：同一用例需在历史执行结果里失败 ≥ `--repeat` 次（默认 2，即至少两次执行都失败）才算"稳定复现"。
-放宽：`--repeat 1`（当次失败就提）、`--include-env`、`--include-case`。
+稳定性：同一用例需在**最近 `ZENTAO_HISTORY_DAYS`（默认 30 天）**的结果里失败 ≥ `--repeat` 次（默认 2）才算“稳定复现”。
+次数按**执行批次**去重：同一批次内重复记录只算 1 次（批次号 = 结果文件名里的 `YYYYmmdd_HHMMSS`）。
+放宽：`--repeat 1`（当次失败就提）、`--history-days 0`（不限时间）、`--include-env`、`--include-case`。
 
 ### 命令
 
@@ -464,6 +489,7 @@ python run.py zentao --product 1 --module 393 --assignee Louie.lu --severity 2 -
 | --- | --- | --- |
 | `ZENTAO_URL` | `http://172.21.100.100:8101/zentao` | 不要带 `/api.php` |
 | `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` | `Louie.lu` / 见 .env | 建议换成专用机器人账号 |
+| `ZENTAO_HISTORY_DAYS` | `30` | 历史失败统计窗口（天，0=不限），影响 `--repeat` 判定 |
 | `ZENTAO_PRODUCT` | `1` | 所属产品 |
 | `ZENTAO_MODULE` | `393` | 所属模块 |
 | `ZENTAO_ASSIGNEE` | `Louie.lu` | 当前指派（账号名） |
@@ -507,6 +533,11 @@ zt.delete_bug(bug_id)     # 软删除（列表消失，后台可彻底删）
    （`core/zentao_ui.py`），接口单按约定不配截图。
 7. **禅道 REST 删除是软删除**（列表消失、`GET /bugs/{id}` 仍可查）：验证过程产生的
    9775 / 9776 / 9777 / 9781 / 9778 / 9783 需要到后台回收站彻底清理。
+8. **没有提单查重**：同一错误指纹「只提一次」靠人工核对；`classify()` 的 `CASE` 规则会假阴性（`不存在` / `参数错误` 这类真实缺陷可能被过滤），提之前人工过一眼「按规则不提」清单。
+9. **证据匹配是模糊的**：`tools/zentao_report.py::_match_evidence()` 按 case_id / 用例名匹配，跨天可能挂到旧截图，提单前打开证据 JSON 核对。
+10. **UI 用例集是单浏览器会话**：`ui/conftest.py` 的 session 级 `browser`，无用例隔离、无并行、无 tracing；一条用例把页面点乱会连带后面。
+11. **`reports/` 无归档策略**：结果文件 / 证据 / `reports/_probe` 会持续增长；提单只认 `reports/last_run.json`，清理时别把它和它指向的结果文件删掉。
+12. **`editexcel` 仅 Windows**：走本机 WPS / Excel COM（`pywin32`），Linux / CI 上必失败 → 暂不接 CI。
 
 ---
 
@@ -537,5 +568,6 @@ zt.delete_bug(bug_id)     # 软删除（列表消失，后台可彻底删）
 | `0cecaa2` | 证据驱动提单：`ui/utils/evidence.py` + `tools/evidence_bug.py`（含 `--attach-to` 补附件、附件去重）+ `core/zentao_ui.py`（页面表单上传附件）+ `tools/demo_pkg_search.py`；修复页面对象把 antd 占位行当数据行的问题 |
 | `3589c1b` | 提单格式统一：API/UI 用例失败自动采证据；两者共用同一模板；新增接口证据图渲染；分类器改为强断言特征优先 |
 | `4bccca7` | **接口单去掉截图**，正文改为「接口 / 请求参数 / 接口返回 / 期望 / 实际」结构（返回保留 `data` 字段）；UI 单保留页面截图 |
+| 本轮（未提交） | 修复「DB 护栏只覆盖 api」的漏洞（新增 `core/db_guard.py`，api / ui 共用）；提单的「历史失败次数」改为按执行批次去重 + 默认 30 天窗口（`--history-days`）；模块分流改为逐条判定（避免整批串味）；删除 `api/requirements.txt` 与调试脚本、停用文件移入 `legacy/`；依赖收口（去掉 ddddocr / numpy / pyautogui / loguru / python-dotenv）；`.env.example` 修正行尾注释；AGENTS / README 新增「交接状态与健康自检」，PROMPT 同步稳定复现口径 |
 
 > 原始两个框架（`D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright`）保持原样，可继续单独使用。

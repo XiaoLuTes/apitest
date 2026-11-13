@@ -6,6 +6,7 @@ from pymysql import cursors
 from api.common.logger import logger
 from typing import List, Dict, Any
 from api.config.setting import setting
+from core.db_guard import assert_env_allowed
 
 
 class DatabaseUtils:
@@ -30,19 +31,17 @@ class DatabaseUtils:
         self._initialized = True
 
     def _assert_env_allowed(self):
-        """数据库操作环境护栏：只允许 DB_ALLOWED_ENVS 里的环境（默认仅测试环境）"""
-        raw = str(getattr(setting, "DB_ALLOWED_ENVS", "测试环境") or "测试环境")
-        allowed = [e.strip() for e in raw.split(",") if e.strip()]
-        current = str(getattr(setting, "ENV", "") or "")
-        if current not in allowed:
-            raise RuntimeError(
-                f"[数据库操作已拦截] 当前环境 ENV={current!r} 不在允许范围 {allowed}；"
-                "按项目约束只有测试环境可以连接数据库（AGENTS.md 第 5 节）")
-        return True
+        """数据库操作环境护栏：只允许 DB_ALLOWED_ENVS 里的环境（默认仅测试环境）
+
+        实现统一在 core/db_guard.py：接口用例集（本文件）与 UI 用例集
+        （ui/utils/database.py 的 sql / sql_update）调的是同一份护栏。
+        """
+        return assert_env_allowed(getattr(setting, "ENV", ""),
+                                  getattr(setting, "DB_ALLOWED_ENVS", ""))
 
     def connect(self):
+        """建立数据库连接（先过环境护栏：非测试环境直接拦下）"""
         self._assert_env_allowed()
-        """建立数据库连接"""
         # 配置缺失时给出明确提示（数据库密码等敏感配置放在项目根目录的 .env 里，不入库）
         missing = [name for name, value in (("DB_HOST", self.host), ("DB_USER", self.user),
                                             ("DB_PASSWORD", self.password), ("DB_NAME", self.database)) if not value]

@@ -57,11 +57,11 @@ python -m playwright install chromium     # UI 用例必需（只装浏览器，
 | 禅道 | `ZENTAO_URL/ACCOUNT/PASSWORD/PRODUCT/MODULE/ASSIGNEE` | 提单用，账号密码登录换 token，不需要定期更新 |
 | 默认项目 | `API_PROJECT`、`UI_PROJECT` | 直接右键跑 pytest 时用它决定跑哪个项目 |
 
-**首次自检三条命令**（都通过说明环境可用）：
+**首次自检四条命令**（都通过说明环境可用）：
 
 ```powershell
-python run.py --list                 # 能看到接口 11 个项目 + UI 5 个项目
-python run.py lint                   # 期望：17 个文件 / 827 条 / 0 错误（49 条存量警告不阻塞）
+python run.py --list                 # 能看到接口 11 个项目 + UI 4 个项目
+python run.py lint                   # 期望：16 个文件 / 813 条 / 0 错误（45 条存量警告不阻塞）
 python run.py check-token            # 期望：[token] 预检通过
 python run.py api 薪资包管理查询       # 期望：10 passed（最轻的接口用例，约 3 秒）
 ```
@@ -72,6 +72,55 @@ python run.py api 薪资包管理查询       # 期望：10 passed（最轻的�
 - 禅道 `--probe` 报 401 → 账号密码错或账号被锁，找用户确认，不要反复试。
 - 没装 allure 命令行只影响 html 报告生成，原始结果仍在 `reports/allure-results`。
 
+### 0.2 交接状态与能力边界（**新会话接手先读这一节**）
+
+**当前快照**（每次交接前用 §0.2 末尾的自检命令刷新）
+
+| 项 | 值 |
+| --- | --- |
+| 框架 | 统一框架 `autotest/`（core + api + ui + tools），分支 `chatbox/merge-api-ui`；`b808ee8` 之后有未提交改动（内容见 `README.md` §13） |
+| 规模 | 接口 11 个项目 / UI 4 个项目；lint **16 个文件 / 813 条 / 0 错误 / 45 警告** |
+| 已验证有效 | `--list`、`lint`、`check-token`、`api 薪资包管理查询`（10 passed）、`zentao` 草稿链路（2026-11-13 19:08） |
+| 已知红（不是框架问题） | `薪资包结算` case 402（导入校验，已提 #9784）；`报销自动审批` 2 条（审批人状态期望 5 实际 1） |
+| token | `ACCESS_TOKEN_ADMIN` **约 2 小时过期**，最近一次验证有效 2026-11-13 19:08；以 `check-token` 为准 |
+
+**AI 自己能做**：读文档 → 拆需求 → 写用例（xlsx / yaml）→ lint → 跑 api / ui → 读证据 → 生成提单草稿 → 改 `autotest/` 内代码。
+
+**必须找人（不要自己硬扛）**
+
+| 事项 | 原因 |
+| --- | --- |
+| 更新 `ACCESS_TOKEN_ADMIN` / `USER_TOKEN` | 只能人登录浏览器复制 `GSR-Token`；`rpaLogin` 换来的 token 调业务接口一律 110106 |
+| 提供需求（PRD / 禅道需求号 / 截图） | 目前没有读禅道 story 的能力 |
+| `--submit --yes` 真提交缺陷 | 硬约束：草稿必须人工确认 |
+| 任何写库（insert / update / delete / DDL） | 必须在用例拆分阶段先问（第 5 节） |
+| 改 `D:\lu\pycharm\api`、`ui_playwright` | 只读目录 |
+| 删除禅道单据 | 软删除也要人确认 |
+
+**已知能力缺口（别重复踩）**
+
+1. **没有提单查重**：「同一指纹只提一次」目前靠人工核对，AI 不要自作主张连续提同类单。
+2. **`classify()` 会假阴性**：`CASE` 规则含「不存在 / 未查询到 / 参数错误」，真实缺陷可能被判成用例问题而不提 → 必须把「按规则不提」清单交给人工过一眼。
+3. **证据按 case_id / 用例名模糊匹配**：跨天可能挂到旧证据（看图/接口是否对得上）。
+4. **UI 是单浏览器会话**（`ui/conftest.py` 的 session 级 `browser`）：无用例隔离、无并行、无 tracing；一条用例把页面点乱会连带后面几条。
+5. **`reports/` 没有归档策略**：结果文件 / 证据 / `reports/_probe` 会一直增长，交接时不要误删正在用的 `last_run.json`。
+6. **`editexcel` 依赖本机 WPS/Excel COM**：只有 Windows 能跑，Linux / CI 上会失败（所以暂不接 CI，用户已确认不处理）。
+
+**接手 5 分钟自检（复制即用，全部只读、不写库、不提交单据）**
+
+```powershell
+cd D:\lu\pycharm\autotest
+python run.py --list                  # 期望：接口 11 个项目 + UI 4 个项目
+python run.py lint                    # 期望：16 个文件 / 813 条 / 0 错误 / 45 警告
+python run.py check-token             # 期望：[token] 预检通过
+python run.py api 薪资包管理查询        # 期望：10 passed（约 1 秒）
+python run.py zentao --probe          # 期望：登录成功 + 产品列表 + 默认字段
+```
+
+任一条失败 → 按第 7 节「已知坑」处理；**不要先改用例断言去迁就环境**。
+
+---
+
 ## 1. 开工前 30 秒检查
 
 开工先读三处：`docs/项目资料/公共/测试数据.md`（环境与账号）、`docs/项目资料/<项目>/README.md` + `测试数据/README.md`（接口清单与可用单据号）、`docs/requirements/` 里同需求的历史拆分（有就接着用）。
@@ -79,7 +128,7 @@ python run.py api 薪资包管理查询       # 期望：10 passed（最轻的�
 ```powershell
 cd D:\lu\pycharm\autotest
 python run.py --list        # 看现有用例集与项目名
-python run.py lint          # 现有用例是否干净（应 0 错误 / 49 条存量警告）
+python run.py lint          # 现有用例是否干净（应 0 错误；存量警告数字以 §0.2 为准）
 python run.py check-token    # ACCESS_TOKEN_ADMIN 是否有效（2 小时过期，执行前必看）
 python run.py zentao --probe # 禅道是否通（提单前才需要）
 ```
@@ -210,8 +259,12 @@ python run.py ui  <项目名> --headless
 8. **结果来源**：只认 `reports/last_run.json` 指向的本次执行结果，会打印「X 小时前」；
    超过保鲜期（`ZENTAO_RESULT_MAX_AGE_HOURS`，默认 24h）直接拒绝 → 重跑或加 `--allow-stale`；
    没有指针时退回按文件时间取最新并提示。
-9. **模块分流**：payroll→`393`（结算/收款）、假勤→`392`（考勤/假勤）；判定看
-   `last_run.project` + 结果文件名 + 失败用例名，可用 `--module <id>` 覆盖。
+9. **模块分流**：payroll→`393`（结算/收款）、假勤→`392`（考勤/假勤）；判定**逐条**看
+   该单自己的「项目名 + 用例名 + 结果文件名」（关键词「薪资/结算/收款」优先，其次「假勤」类），
+   可用 `--module <id>` 覆盖。
+10. **稳定复现的统计口径**：历史失败次数 = 最近 `ZENTAO_HISTORY_DAYS`（默认 30）天内
+    该用例失败过的**执行批次数**（同一批次内只算 1 次）；窗口与 `--repeat` 可用
+    `--history-days` / `--repeat` 临时调整。
 
 
 ```powershell
@@ -309,6 +362,7 @@ test_cases:                     # 固定根节点
 7. 遇到不确定的环境/权限现象：**报告用户**（附错误码与证据），不要改断言去"迁就"环境。
 8. **资料归档**：用户给的接口文档/表结构/PRD 一律放 `docs/项目资料/<项目>/<类别>/`，文件名 `YYYYMMDD-来源-主题.扩展名`，并在该项目 `README.md` 的「已收录清单」补一行；新增**项目数据/单据号**登记到 `<项目>/测试数据/README.md`，新增**公共数据**（账号、客户、供应商、DB 表）登记到 `公共/测试数据.md`；失效的标 `❌失效` 而不是删行。
 9. **数据库**：只有测试环境可连库（含只读）；`db_update`/delete/insert 必须在**用例拆分阶段**先经用户确认，并配恢复方案——细则见第 5 节。
+10. **改框架代码要自证**：动了 `core/` `api/common/` `ui/utils/` `tools/` 之后，必须跑 §0.2 的健康自检五条 + 相关用例冒烟，并在汇报里贴结果；`python run.py lint` 必须仍是 0 错误。
 
 ## 5. 数据库操作约束（硬性，违反即拒绝执行）
 
@@ -320,8 +374,10 @@ test_cases:                     # 固定根节点
 | 预生产 / 生产 / UAT / 客户演示环境 | ❌ 禁止 | **包括只读查询**，不是"只读就没事" |
 
 判定顺序：`.env` 的 `ENV` → `api/config/setting.py` 的 `ENV` → 接口/页面 host。任一显示非测试环境 → 视为不允许。
-代码护栏：`api/common/database.py::connect()` 会校验 `setting.DB_ALLOWED_ENVS`（默认 `测试环境`），
-不在白名单直接抛错。**不要为了跑通去改这个白名单或绕开 connect()。**
+代码护栏：`core/db_guard.py::assert_env_allowed()`，**接口与 UI 两边都接**——
+`api/common/database.py::connect()` 和 `ui/utils/database.py::connect()`（UI 的 `sql` / `sql_update` 走这条）
+都会校验 `DB_ALLOWED_ENVS`（默认 `测试环境`），不在白名单直接抛错。
+新增任何连库入口都必须复用这个函数；**不要为了跑通去改白名单或绕开 connect()。**
 环境不确定时先问用户，不要试探。
 
 ### 5.2 写操作必须在「用例拆分阶段」先问用户
@@ -370,6 +426,8 @@ test_cases:                     # 固定根节点
 | 加元素定位器 | `ui/config/locators/<项目>.yaml`（先跑 `tools/ui_capture.py`） |
 | 改提单格式 | `tools/evidence_bug.py::build_steps_html()` |
 | 改提单过滤规则 | `tools/zentao_report.py::classify()` / `main()` 的 `--repeat` |
+| 改稳定复现口径（历史失败次数） | `tools/zentao_report.py::history_failure_counts()`，参数 `--history-days` / `ZENTAO_HISTORY_DAYS` |
+| 改数据库环境白名单（红线，慎改） | `core/db_guard.py`（api / ui 共用同一份护栏） |
 | 改禅道字段 | `core/zentao.py::create_bug()`（`.env` 的 `ZENTAO_*`） |
 | 采集证据（自定义场景） | `ui/utils/evidence.py::EvidenceRecorder`，参考 `tools/demo_pkg_search.py` |
 | 看报告 | `reports/`（allure-results / results / logs / screenshots / evidence / zentao） |
@@ -389,6 +447,10 @@ test_cases:                     # 固定根节点
 | `Sync API inside the asyncio loop` | 同线程二次开 `sync_playwright`；放独立线程 |
 | `conditionalActivation` 导致审批流不生效 | 假勤模板 deploy 时必须传 `0` |
 | `${var}` 在 UI 用例里不生效 | UI 只认 `{var}`；要字面量写 `{{var}}`（`VariableStore.render` 支持转义） |
+| `.env` 写了**行尾注释** → 数值解析失败（如 `int('393  # xx')`） | `core/env.py` 只把行首 `#` 当注释，行尾 `#` 属于值的一部分；注释必须单独占一行（`.env.example` 已改） |
+| `run.py ... -n 2` 报 unknown option | `pytest-xdist` / `pytest-timeout` 没装；目前是串行执行，想并行要先装插件（UI 单会话还会冲突） |
+| UI 后面几条用例莫名失败 | 单浏览器会话没有隔离，先看前一条是不是把页面点乱/弹窗没关；必要时把用例拆成独立项目跑 |
+| 提单挂到了别的用例的截图 | 证据按 case_id/用例名模糊匹配，跨天会串；用 `--from` 指定结果文件 + 人工核对截图 |
 
 ## 8. 文档地图
 
@@ -404,6 +466,8 @@ test_cases:                     # 固定根节点
 | `docs/项目资料/公共/测试数据.md` | 环境账号、客户/供应商/员工、DB 常用表（造数前先看） |
 | `docs/项目资料/<项目>/` | 接口文档 / 数据库表结构 / 需求文档 / 测试数据（含 `测试数据/README.md`） |
 | `docs/需求拆分模板.md` / `docs/用例编写模板.md` | 阶段 1 / 阶段 2 的产物模板 |
+| `docs/需求交接提示词.md` | 把新需求交给 AI 时的提示词模板（复制即用，含 4 种变体） |
+| `legacy/` | 停用的历史用例与备份文件（不进 lint、不参与执行），迁移原因见 `legacy/README.md` |
 
 ## 9. 交付汇报模板（每次任务结束按这个回）
 

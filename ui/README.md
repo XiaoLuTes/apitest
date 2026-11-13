@@ -11,7 +11,7 @@
 | Playwright | 浏览器自动化（Chromium，sync API）|
 | Pytest | 测试框架（参数化驱动用例）|
 | PyYAML | 用例与定位器配置 |
-| ddddocr / OpenCV | 验证码 OCR 识别 |
+| ~~ddddocr / OpenCV~~ | 验证码 OCR 识别（`ui/utils/captcha_ocr.py` 已整模块注释停用，依赖也已从 requirements 移除；恢复该模块时再加回） |
 | PyMySQL | 数据库校验 |
 | python-dotenv | 本地凭据读取（.env）|
 | openpyxl | Excel 填写（edit_excel 动作）|
