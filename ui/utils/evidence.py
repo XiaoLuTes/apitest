@@ -37,9 +37,16 @@ class EvidenceRecorder:
     def start(self):
         """开始记录接口调用（按 api_keywords 过滤，留空=记录全部）"""
 
+        keywords = self.api_keywords or ["/api/"]
+
         def _on_response(resp):
             try:
-                if self.api_keywords and not any(k in resp.url for k in self.api_keywords):
+                # 只留业务接口（静态资源 js/css/图片/字体全部丢弃），并控制条数
+                if not any(k in resp.url for k in keywords):
+                    return
+                if any(resp.url.lower().endswith(ext) for ext in
+                       (".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".woff", ".woff2",
+                        ".ttf", ".ico", ".map")):
                     return
                 request = resp.request
                 try:
@@ -53,6 +60,8 @@ class EvidenceRecorder:
                     "status": resp.status,
                     "response": (body or "")[:4000],
                 })
+                if len(self.api_calls) > 10:       # 只保留最近 10 条，避免证据文件过大
+                    del self.api_calls[0]
             except Exception:                        # noqa: BLE001
                 pass
 

@@ -1,3 +1,4 @@
+import re
 import time
 from ui.utils.logger import logger
 import allure
@@ -5,6 +6,7 @@ from ui.utils.page_manager import PageManager
 from ui.utils.yaml_load import YamlLoad
 from ui.config.settings import settings
 from ui.utils.common import VariableStore
+from ui.utils.evidence import EvidenceRecorder
 import json
 
 
@@ -88,6 +90,10 @@ class Executor:
         test_case_name = test_case['name']
         logger.info(f"开始执行测试用例: {test_case_id} - {test_case_name}")
 
+        # 证据采集：步骤 / 接口请求返回 / 截图（失败时落盘，供禅道提单）
+        recorder = EvidenceRecorder(self.page, title=f"{test_case_id} {test_case_name}",
+                                    case_id=str(test_case_id)).start()
+
         try:
             if test_case_page:
                 logger.info(f"导航到页面: {test_case_page}")
@@ -109,6 +115,8 @@ class Executor:
                 data = step.get('data', '')
                 expected = step.get('expected', '')
 
+                recorder.step(step_name, action=action, element=element_name,
+                              data=data, note=f"预期：{expected}" if expected else "")
                 with allure.step(f"步骤：{step_name}"):
                     self.execute_step(page_object, step_name, element_name, action, data, expected)
 
@@ -120,9 +128,38 @@ class Executor:
             error_msg = str(e)
             self.yaml_load.update_test_result(test_case_id, f"失败: {error_msg}")
             logger.error(f"测试用例执行失败: {test_case_id} | {error_msg}")
+            # 失败即落证据：截图 + 步骤 + 接口返回
+            try:
+                recorder.step("用例失败，记录当前页面", action="error", note=error_msg)
+                shot = recorder.screenshot(f"UI失败-{test_case_id}")
+                recorder.stop()
+                last_api = recorder.last_api() or {}
+                # 期望/实际：从失败信息里还原成人话（提单里要看得懂）
+                expect_text, actual_text = "按用例步骤中的预期结果", error_msg
+                matched = re.search(r"预期包含'(.+?)'，实际'(.+?)'", error_msg)
+                if matched:
+                    expect_text = f"页面文本应包含「{matched.group(1)}」"
+                    actual_text = f"实际页面文本为「{matched.group(2)}」"
+                else:
+                    matched = re.search(r"预期'(.+?)'，实际'(.+?)'", error_msg)
+                    if matched:
+                        expect_text = f"页面内容应为「{matched.group(1)}」"
+                        actual_text = f"实际为「{matched.group(2)}」"
+
+                ev_path = recorder.dump(extra={
+                    "precondition": f"管理端已登录；页面：{test_case.get('page')}；"
+                                    f"用例文件：{getattr(self.settings, 'TESTCASES', '')}",
+                    "expect": expect_text,
+                    "actual": actual_text,
+                })
+                logger.info(f"失败证据已保存: {ev_path} | 截图: {shot}"
+                            + (f" | 接口: {last_api.get('url')}" if last_api else ""))
+            except Exception as ev_err:          # noqa: BLE001
+                logger.warning(f"保存失败证据时出错（忽略）: {ev_err}")
             return False
 
         finally:
+            recorder.stop()
             self._close_database_connection()
             logger.info(f"测试用例 {test_case_id} 执行完成")
 

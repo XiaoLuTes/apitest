@@ -4,7 +4,7 @@ from typing import Any
 import allure
 import pytest
 from api.config.setting import setting
-from api.common import request_util, excel_read, run_state, file_util, yaml_util, retry, payroll_util, payroll_package
+from api.common import request_util, excel_read, run_state, file_util, yaml_util, retry, payroll_util, payroll_package, evidence
 from api.common.logger import logger
 from api.common.variable_handle import ExtractValueError, UpstreamDependencyError, VariableHandle, VariableNotFoundError
 from api.common.database import DatabaseUtils
@@ -19,6 +19,7 @@ class Executor:
         self.test_url = setting.TEST_URL
         self.fileload = setting.TEST_FLIELOAD
         self.default_url = setting.DEFAULT_URL
+        self._req_info = {}          # 最近一次请求信息（失败时写进证据包）
 
     def build_url(self, name, path):
         """根据用例名称前缀选择端，并拼接用例中的接口路径
@@ -69,6 +70,7 @@ class Executor:
         try:
             sheet = file['sheet']
             row_num = file['row_num']  # 用例真实行号，用于回写结果
+            file['_file'] = self.fileload
             case_id = file['case_id']
             allure.dynamic.title(str(file.get('name') or case_id))
             # 1、依赖检查：本条用例引用的变量若来自失败 / 跳过的上游用例，直接跳过，避免“一条根因 + N 条连环红”
@@ -171,6 +173,13 @@ class Executor:
                     logger.warning(f"用例 {case_id}：download 不支持 validata 断言，已忽略")
                 logger.info(f"\n实际请求url:{url},\n实际请求参数{download_params}")
                 resp = request_util.send_request(method='download', url=url, data=download_params, headers=headers)
+                self._req_info = {
+                    "method": "GET(download)", "url": url,
+                    "request_body": json.dumps(download_params, ensure_ascii=False, default=str)
+                    if not isinstance(download_params, str) else download_params,
+                    "status": resp.status_code, "response": "<文件流>",
+                    "api_keyword": str(file.get('url') or ''),
+                }
                 try:
                     saved = file_util.save_response_file(resp, case_id=case_id, target_dir=download_dir)
                 finally:
@@ -201,6 +210,13 @@ class Executor:
                     self.req = None
                     req = request_util.send_request(method=method, url=url, data=data, headers=headers)
                     self.req = req
+                    self._req_info = {
+                        "method": str(method).upper(), "url": url,
+                        "request_body": json.dumps(data, ensure_ascii=False, default=str)
+                        if not isinstance(data, str) else data,
+                        "status": req.status_code, "response": req.text,
+                        "api_keyword": str(file.get('url') or ''),
+                    }
                     last_req, last_req_attempt = req, attempt_no
                     excel_read.Excel.record_result(self.fileload, sheet, row_num,
                                                    file.get('response_col'), req.text)
@@ -243,6 +259,14 @@ class Executor:
 
         except Exception as e:
             error = e
+            # 失败即落证据：JSON（步骤/接口/断言）+ 接口证据截图，供禅道提单直接使用
+            try:
+                json_path, png_path = evidence.save_api_evidence(
+                    file, self._req_info, self.validate_result, e)
+                logger.info(f"失败证据已保存: {json_path}"
+                            + (f" | 截图: {png_path}" if png_path else ""))
+            except Exception as ev_err:      # noqa: BLE001  证据失败不影响用例结论
+                logger.warning(f"保存失败证据时出错（忽略）: {ev_err}")
             case_id_str = str(case_id) if case_id is not None else "未知用例ID"
             name_str = str(name) if name is not None else str(file.get('name') or "未知用例名称")
             # 3、本条用例要产出的变量标记为不可信，让依赖它的后续用例跳过而不是连环报错

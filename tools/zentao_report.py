@@ -1,24 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""执行结果 → 禅道提单（默认只出草稿，--submit 才真提）
+"""执行结果 → 禅道提单（统一格式：步骤 + 接口请求/返回 + 截图）
 
-模板已对齐公司禅道（开源版 22.6，http://172.21.100.100:8101/zentao）：
-    所属产品 = GSR OMNI(1)      所属模块 = /Payroll&结算(393)
-    严重程度 = 3(一般)          优先级 = 3(中)        类型 = codeerror(代码错误)
-    影响版本 = ["trunk"]（主干） 反馈者 = 登录账号      当前指派 = ZENTAO_ASSIGNEE
-    重现步骤 = HTML 富文本，[前置条件]/[步骤]/[结果]/[期望]/[备注]
-    标题      = 【自动化-<环境>】<用例名>：<现象摘要>
+两条入口都走同一套模板（tools/evidence_bug.py）：
+    1. 有证据包（reports/evidence/*.json，UI/API 用例失败时自动落盘）→ 直接用它
+    2. 没证据包 → 从结果文件重建：接口信息取 result/url/data 列，
+       没有截图时把"请求 + 返回 + 断言差异"渲染成一张证据图，保证每单都有接口和截图
+提单字段（对齐公司禅道）：产品 1 / 模块 393 / 严重程度 3 / 优先级 3 / 类型 codeerror /
+影响版本 trunk / 反馈者=登录账号 / 指派 ZENTAO_ASSIGNEE；附件走页面上传并内联引用。
 
 用法：
-    python run.py zentao --probe                        # 探测连通性/身份/产品
-    python run.py zentao                                # 最近一次结果 → 草稿
+    python run.py zentao --probe                    # 探测禅道
+    python run.py zentao                            # 最近一次执行结果 → 草稿
+    python run.py zentao --submit --yes             # 真提交
     python run.py zentao --from reports/results/api/x.xlsx
-    python run.py zentao --submit --yes                 # 真提交（草稿核对后）
-    python run.py zentao --submit --yes --delete-on-verify   # 验证用：提交后立刻删除
-
-已知限制（实测）：
-    附件走 REST 上传被服务端拒（png/xlsx/txt 都报"文件格式不在规定范围内"），
-    因此模板把结果文件路径写进 [备注]，需要贴图时人工补或改用 UI 方式提单。
+    python run.py zentao --repeat 1                 # 放宽复现次数（默认 2）
+    python run.py zentao --include-env              # 连环境类失败一起提（默认不提）
 """
 import argparse
 import glob
@@ -26,7 +23,6 @@ import json
 import os
 import re
 import sys
-import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -37,12 +33,13 @@ from core.env import load_env  # noqa: E402
 
 load_env()
 
-DRAFT_DIR = os.path.join(paths.REPORTS, "zentao")
-DEFAULT_KEYWORDS = "自动化"
+import tools.evidence_bug as evidence_bug  # noqa: E402
+
+EVIDENCE_DIR = os.path.join(paths.REPORTS, "evidence")
 
 
 # ============================================================================
-# 1. 读执行结果，收集失败用例
+# 1. 读执行结果
 # ============================================================================
 
 
@@ -62,15 +59,25 @@ def _read_api_failures(xlsx_path):
                 result = row[idx["result"]] if idx["result"] < len(row) else None
                 if not isinstance(result, str) or not result.strip().startswith("失败"):
                     continue
-                case_id = row[idx["case_id"]] if "case_id" in idx and idx["case_id"] < len(row) else ""
-                name = row[idx["name"]] if "name" in idx and idx["name"] < len(row) else ""
+
+                def cell(name):
+                    pos = idx.get(name)
+                    if pos is None or pos >= len(row):
+                        return ""
+                    value = row[pos]
+                    return "" if value is None else str(value)
+
                 failures.append({
                     "suite": "api",
                     "source": os.path.basename(xlsx_path),
                     "sheet": sheet,
-                    "case_id": "" if case_id is None else str(case_id),
-                    "name": "" if name is None else str(name),
+                    "case_id": cell("case_id"),
+                    "name": cell("name"),
                     "reason": result.replace("失败：", "").replace("失败:", "").strip(),
+                    "method": cell("method"),
+                    "url": cell("url"),
+                    "request_body": cell("data"),
+                    "response": cell("response"),
                 })
     finally:
         wb.close()
@@ -93,7 +100,8 @@ def _read_ui_failures(yaml_path):
             "sheet": "",
             "case_id": str(case.get("id") or ""),
             "name": str(case.get("name") or ""),
-            "reason": result.replace("失败：", "").replace("失败:", "").strip(),
+            "reason": result.replace("失败:", "").replace("失败：", "").strip(),
+            "method": "", "url": "", "request_body": "", "response": "",
         })
     return failures
 
@@ -121,10 +129,9 @@ def collect_failures(source=None):
 
 
 # ============================================================================
-# 1.5 失败分类 + 稳定性判定（只提"断言失败且稳定复现"的）
+# 2. 失败分类 + 稳定性
 # ============================================================================
 
-# 失败归类规则（顺序敏感：先排除环境/用例问题，再认断言失败）
 ENV_PATTERNS = (
     r"110106", r"没有访问权限", r"令牌", r"\b401\b", r"\b403\b",
     r"超时", r"Timeout", r"timed out", r"连接", r"Connection", r"\b50[234]\b", r"网络",
@@ -139,9 +146,18 @@ ASSERT_PATTERNS = (
 )
 
 
+# 强断言特征：先判这些，避免"预期包含'xxx不存在'".这句里带"不存在"被误判成用例问题
+STRONG_ASSERT_PATTERNS = (
+    r"断言项\[", r"文本不匹配", r"输入验证失败", r"元素应", r"SQL行数",
+    r"期望值[:：]", r"预期包含", r"断言失败",
+)
+
+
 def classify(reason):
-    """把失败原因归类：ENV(环境/权限) / CASE(用例或数据问题) / ASSERT(断言失败) / UNKNOWN"""
     text = str(reason or "")
+    for pat in STRONG_ASSERT_PATTERNS:
+        if re.search(pat, text):
+            return "ASSERT"
     for pat in ENV_PATTERNS:
         if re.search(pat, text):
             return "ENV"
@@ -155,14 +171,12 @@ def classify(reason):
 
 
 def _all_result_files():
-    """最近的结果文件（api xlsx + ui yaml），用于统计"同一用例失败了几次" """
     api = sorted(glob.glob(os.path.join(paths.RESULTS_API, "*.xlsx")), key=os.path.getmtime)
     ui = sorted(glob.glob(os.path.join(paths.RESULTS_UI, "*.yaml")), key=os.path.getmtime)
     return api + ui
 
 
 def history_failure_counts():
-    """统计历史结果里每条用例失败的次数：{(suite, case_id, name): 次数, 'name': 次数}"""
     counts = {}
     for path in _all_result_files():
         try:
@@ -176,180 +190,98 @@ def history_failure_counts():
     return counts
 
 
-def annotate(failures, history):
-    """给每条失败补上 分类 / 历史失败次数"""
-    for item in failures:
-        item["class"] = classify(item["reason"])
-        item["repeat"] = history.get((item["suite"], item["case_id"], item["name"]), 1)
-    return failures
-
-
 # ============================================================================
-# 2. 聚类（同根因合成一条缺陷）
+# 3. 组装证据包（优先用执行时落的证据，其次从结果重建）
 # ============================================================================
 
 
-def fingerprint(reason):
-    text = str(reason or "")
-    text = re.sub(r"\b[0-9a-f]{8,}\b", "<id>", text, flags=re.I)
-    text = re.sub(r"\d+", "<n>", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text[:120] or "未知原因"
+def _load_evidence_pool():
+    """按修改时间倒序加载所有证据包"""
+    pool = []
+    for path in sorted(glob.glob(os.path.join(EVIDENCE_DIR, "*.json")), key=os.path.getmtime,
+                       reverse=True):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            data["_path"] = path
+            pool.append(data)
+        except Exception:                        # noqa: BLE001
+            continue
+    return pool
 
 
-def cluster(failures):
-    groups = {}
-    for item in failures:
-        groups.setdefault(fingerprint(item["reason"]), []).append(item)
-    clusters = [{"fingerprint": fp, "items": items} for fp, items in groups.items()]
-    clusters.sort(key=lambda c: -len(c["items"]))
-    return clusters
+def _match_evidence(failure, pool):
+    case_id = str(failure.get("case_id") or "").strip()
+    name = str(failure.get("name") or "").strip()
+    for ev in pool:
+        ev_case = str(ev.get("case_id") or "").strip()
+        ev_title = str(ev.get("title") or "").strip()
+        if case_id and ev_case and (ev_case == case_id or ev_case.endswith(case_id)):
+            return ev
+        if name and (ev_title == name or name in ev_title):
+            return ev
+    return None
 
 
-# ============================================================================
-# 3. 按公司禅道模板生成草稿
-# ============================================================================
-
-
-def _esc(text):
-    return (str(text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
-
-
-def _plain(text):
-    return re.sub(r"\s+", " ", str(text or "")).strip()
-
-
-def build_title(item, env_name):
-    """标题风格对齐公司禅道：【来源】用例名：现象（只取第一处断言，避免标题过长被截断）"""
-    name = _plain(item.get("name") or item.get("case_id"))
-    reason = _plain(item.get("reason"))
-    matched = re.search(
-        r"断言项\[([^\]]+)\]失败\s*\|\s*期望值:\s*([^|]*?)\s*\|\s*实际值:\s*([^|]*?)\s*(?:\||$)",
-        reason)
-    if matched:
-        path, expected, actual = (x.strip() for x in matched.groups())
-        # 去掉类型标注，如 "0 (类型: str)" -> "0"
-        expected = re.sub(r"\s*\(类型:[^)]*\)", "", expected)
-        actual = re.sub(r"\s*\(类型:[^)]*\)", "", actual)
-        brief = f"{path} 期望 {expected} 实际 {actual}"
+def build_evidence(failure):
+    """证据包 + 失败上下文 → 提单用 evidence"""
+    pool = _load_evidence_pool()
+    found = _match_evidence(failure, pool)
+    if found:
+        evidence = dict(found)
+        evidence.pop("_path", None)
+        evidence.setdefault("case_ref", {})
+        if not evidence.get("screenshots"):
+            evidence["screenshots"] = []
     else:
-        brief = reason[:60]
-    reason_count = len(re.findall(r"断言项\[", reason))
-    if reason_count > 1:
-        brief += f" 等{reason_count}处断言"
-    return f"【自动化-{env_name}】{name}：{brief[:90]}"
+        api_calls = []
+        if failure.get("url"):
+            api_calls.append({
+                "method": failure.get("method") or "GET",
+                "url": failure["url"],
+                "request_body": failure.get("request_body") or "",
+                "status": None,
+                "response": failure.get("response") or "",
+            })
+        evidence = {
+            "title": failure.get("name") or failure.get("case_id"),
+            "case_id": failure.get("case_id"),
+            "env": os.getenv("ENV", "测试环境"),
+            "precondition": (f"自动化用例 {failure.get('case_id')} 执行失败；"
+                             f"用例文件：{failure.get('source')}（{failure.get('sheet') or failure.get('suite')}）"),
+            "steps": [
+                {"name": f"执行用例：{failure.get('case_id')} {failure.get('name')}", "action": "case"},
+                {"name": "执行失败，记录失败现场（无独立证据包，由结果文件重建）", "action": "note"},
+            ],
+            "api_calls": api_calls,
+            "screenshots": [],
+        }
 
+    # 期望 / 实际：证据里没有就用失败原因补齐（保证单子可读）
+    if not evidence.get("expect"):
+        expects = re.findall(r"期望值?[:：]\s*([^|；;]+)", failure.get("reason") or "")
+        evidence["expect"] = "；".join(x.strip() for x in expects[:5]) or "与用例断言一致"
+    if not evidence.get("actual"):
+        evidence["actual"] = failure.get("reason") or ""
+    evidence["env"] = evidence.get("env") or os.getenv("ENV", "测试环境")
 
-def build_steps_html(item, items, files, env_name):
-    """重现步骤：公司模板 [前置条件]/[步骤]/[结果]/[期望]/[备注]（HTML）"""
-    ts = time.strftime("%Y-%m-%d %H:%M:%S")
-    reason_lines = [line for line in str(item["reason"]).splitlines() if line.strip()]
-    reason_html = "<br/>".join(_esc(line) for line in reason_lines) or "（无错误详情）"
-    # [期望] 只取「期望值」，不要把整行错误重复一遍
-    expects = []
-    for line in reason_lines:
-        matched = re.search(r"断言项\[([^\]]+)\][^|]*\|?\s*期望值:\s*([^|]+)", line)
-        if matched:
-            expects.append(f"{matched.group(1).strip()} 期望 {matched.group(2).strip()}")
-        elif "期望" in line:
-            expects.append(_plain(line)[:200])
-    expect_html = "<br/>".join(_esc(item) for item in expects[:10]) \
-        or "与用例断言一致（详见用例与结果文件）"
-    merged = "、".join(f"{i['case_id']} {i['name']}" for i in items[:10])
-
-    return "".join([
-        "<p><strong>[前置条件]</strong></p>",
-        f"<p>自动化用例稳定复现，无需人工准备数据；执行环境：{_esc(env_name)}</p>",
-        "<p><strong>[步骤]</strong></p>",
-        f"<p>1. 执行用例：{_esc(item['case_id'])} {_esc(item['name'])}</p>",
-        f"<p>2. 用例文件：{_esc(item['source'])}（{_esc(item.get('sheet') or item['suite'])}）</p>",
-        f"<p>3. 执行时间：{ts}</p>",
-        "<p><strong>[结果]</strong></p>",
-        f"<p>{reason_html}</p>",
-        "<p><strong>[期望]</strong></p>",
-        f"<p>{expect_html}</p>",
-        "<p><strong>[备注]</strong></p>",
-        f"<p>同根因用例 {len(items)} 条：{_esc(merged)}</p>",
-        f"<p>结果文件：{_esc('; '.join(os.path.basename(f) for f in files))}"
-        f"（reports/results/ 下可查；API 附件上传被禅道限制，如需截图请人工补传）</p>",
-    ])
-
-
-def build_draft(clusters, env_name, product, module, assignee, severity, pri, bug_type, files,
-                opened_build="trunk", feedback_by="", keywords=DEFAULT_KEYWORDS):
-    drafts = []
-    for index, cluster in enumerate(clusters, start=1):
-        items = cluster["items"]
-        first = items[0]
-        drafts.append({
-            "序号": index,
-            "标题": build_title(first, env_name),
-            "产品": product,
-            "模块": module,
-            "严重程度": severity,
-            "优先级": pri,
-            "类型": bug_type,
-            "指派给": assignee,
-            "影响版本": opened_build,
-            "反馈者": feedback_by,
-            "关键词": keywords,
-            "影响用例数": len(items),
-            "涉及用例": "、".join(f"{i['case_id']}{i['name']}" for i in items[:3])
-                        + ("…" if len(items) > 3 else ""),
-            "重现步骤": build_steps_html(first, items, files, env_name),
-            "判定": "断言失败 + 历史失败 {} 次（稳定复现）".format(
-                max(i.get("repeat", 1) for i in items)),
-            "错误指纹": cluster["fingerprint"],
-        })
-    return drafts
-
-
-def write_draft(drafts):
-    os.makedirs(DRAFT_DIR, exist_ok=True)
-    stamp = time.strftime("%Y%m%d_%H%M%S")
-    md_path = os.path.join(DRAFT_DIR, f"draft_{stamp}.md")
-    xlsx_path = os.path.join(DRAFT_DIR, f"draft_{stamp}.xlsx")
-
-    lines = [f"# 禅道提单草稿（{stamp}）", "", f"共 {len(drafts)} 条（已按错误指纹聚合同根因）", ""]
-    for d in drafts:
-        lines += [
-            f"## {d['序号']}. {d['标题']}",
-            "",
-            f"- 产品：{d['产品']}　模块：{d['模块']}　严重程度：{d['严重程度']}　"
-            f"优先级：{d['优先级']}　类型：{d['类型']}",
-            f"- 影响版本：{d['影响版本']}　反馈者：{d['反馈者'] or '（登录账号）'}　"
-            f"指派给：{d['指派给'] or '（默认）'}　关键词：{d['关键词']}",
-            f"- 影响用例数：{d['影响用例数']}　涉及用例：{d['涉及用例']}",
-            f"- 判定：{d.get('判定', '')}",
-            "",
-            "**重现步骤（提交时转成 HTML）**",
-            "",
-            "```html",
-            d["重现步骤"],
-            "```",
-            "",
-        ]
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-    import openpyxl
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "提单草稿"
-    headers = ["序号", "标题", "产品", "模块", "严重程度", "优先级", "类型", "指派给",
-               "影响版本", "反馈者", "关键词", "影响用例数", "涉及用例", "判定", "重现步骤", "错误指纹"]
-    ws.append(headers)
-    for d in drafts:
-        ws.append([d[h] for h in headers])
-    for idx, width in enumerate([6, 60, 8, 8, 10, 8, 12, 12, 10, 12, 12, 10, 40, 34, 80, 40], start=1):
-        ws.column_dimensions[openpyxl.utils.get_column_letter(idx)].width = width
-    wb.save(xlsx_path)
-    wb.close()
-    return md_path, xlsx_path
+    # 保证"每次提单都有截图"：没有真实截图就把接口/断言证据渲染成图
+    if not [p for p in evidence.get("screenshots") or [] if os.path.isfile(p)]:
+        try:
+            from api.common.evidence import render_evidence_png
+            stamp = __import__("time").strftime("%Y%m%d_%H%M%S")
+            safe = re.sub(r"[^\w\-]+", "_", f"{failure.get('case_id')}_evidence")
+            png = os.path.join(paths.SCREENSHOTS, f"{safe}_{stamp}.png")
+            render_evidence_png(evidence, out_path=png)
+            evidence["screenshots"] = [png]
+            print(f"[证据图] 已生成接口证据截图：{png}")
+        except Exception as e:                   # noqa: BLE001
+            print(f"[警告] 生成接口证据截图失败（该单将无截图）：{e}")
+    return evidence
 
 
 # ============================================================================
-# 4. 探测禅道
+# 4. 探测
 # ============================================================================
 
 
@@ -361,128 +293,45 @@ def probe():
         client = ZentaoClient.from_env()
     except ZentaoError as e:
         print(e)
-        print("\n配置位置：.env（参考 .env.example 的 ZENTAO_* 段）")
         return 2
-
     print(f"禅道地址：{client.url}")
-    print(f"鉴权方式：{'token（.env 直给）' if client.token else '账号密码换 token'}")
     try:
         client.login()
-        print(f"登录结果：成功（mode={client.mode}）")
+        print("登录结果：成功")
     except ZentaoError as e:
         print(f"登录结果：失败 → {e}")
         return 2
-
-    for label, func in (("当前用户 /api.php/v1/user", client.whoami),
-                        ("产品列表 /api.php/v1/products", client.products),
-                        ("用户列表 /api.php/v1/users", client.users)):
+    for label, func in (("当前用户", client.whoami), ("产品列表", client.products)):
         try:
-            data = func()
-            if isinstance(data, dict):
-                data = data.get("profile") or data.get("user") or data
-            sample = data[:3] if isinstance(data, list) else data
-            print(f"{label}：可用 → {json.dumps(sample, ensure_ascii=False)[:260]}")
+            print(f"{label}：{json.dumps(func(), ensure_ascii=False)[:200]}")
         except ZentaoError as e:
             print(f"{label}：不可用 → {e}")
-
-    product = os.getenv("ZENTAO_PRODUCT", "").strip()
-    if product:
-        try:
-            mods = client.modules(product)
-            print(f"模块列表（产品 {product}）：{mods if mods else '该版本无模块 REST 端点，模块 id 从提单页 URL 取'}")
-        except ZentaoError as e:
-            print(f"模块列表（产品 {product}）：不可用 → {e}")
-    print("\n提单默认值：产品 {} / 模块 {} / 严重程度 {} / 优先级 {} / 类型 {} / 影响版本 {}".format(
+    print("提单默认值：产品 {} / 模块 {} / 严重程度 {} / 优先级 {} / 类型 {} / 影响版本 {}".format(
         os.getenv("ZENTAO_PRODUCT", "1"), os.getenv("ZENTAO_MODULE", "393"),
         os.getenv("ZENTAO_SEVERITY", "3"), os.getenv("ZENTAO_PRI", "3"),
         os.getenv("ZENTAO_TYPE", "codeerror"), os.getenv("ZENTAO_OPENED_BUILD", "trunk")))
-    print("提示：先不带 --submit 出草稿核对，再 --submit --yes 提交")
     return 0
 
 
 # ============================================================================
-# 5. 提交
+# 5. 入口
 # ============================================================================
 
 
-def submit(drafts, args, files):
-    from core.zentao import ZentaoClient, ZentaoError
-
-    auto = os.getenv("ZENTAO_AUTO_SUBMIT", "false").strip().lower() in ("true", "1", "yes", "y", "on")
-    if not (args.yes or auto):
-        print("[安全拦截] 未加 --yes，且 .env 的 ZENTAO_AUTO_SUBMIT 不是 true → 只生成草稿，不提交")
-        return 0
-
-    try:
-        client = ZentaoClient.from_env()
-        client.login()
-    except ZentaoError as e:
-        print(f"[提单失败] {e}")
-        return 2
-
-    submitted = 0
-    created = []
-    for d in drafts:
-        try:
-            bug_id = client.create_bug(
-                title=d["标题"], steps=d["重现步骤"],
-                product=args.product, module=args.module,
-                severity=args.severity, pri=args.pri, bug_type=args.bug_type,
-                assigned_to=args.assignee, feedback_by=args.feedback_by,
-                opened_build=args.opened_build, keywords=args.keywords,
-            )
-            submitted += 1
-            print(f"[已提交] #{bug_id} {d['标题']}")
-            print(f"          {client.url}/bug-view-{bug_id}.html")
-            if args.delete_on_verify:
-                try:
-                    view = client.request("GET", f"/api.php/v1/bugs/{bug_id}")
-                    print("          [回读字段] " + json.dumps({
-                        k: view.get(k) for k in ("module", "severity", "pri", "type",
-                                                  "keywords", "openedBuild", "assignedTo")
-                    }, ensure_ascii=False))
-                    client.delete_bug(bug_id)
-                    print(f"          [验证模式] 已删除 #{bug_id}")
-                except ZentaoError as e:
-                    print(f"          回读/删除失败：{e}")
-                    created.append(bug_id)
-            else:
-                created.append(bug_id)
-        except ZentaoError as e:
-            print(f"[提交失败] {d['标题']} → {e}")
-    print(f"\n提交完成：成功 {submitted} / 共 {len(drafts)}")
-    return 0 if submitted == len(drafts) else 1
-
-
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="执行结果 → 禅道提单（默认只生成草稿）")
-    parser.add_argument("--probe", action="store_true", help="探测禅道连通性/接口形态")
+    parser = argparse.ArgumentParser(description="执行结果 → 禅道提单（步骤/接口/截图齐全）")
+    parser.add_argument("--probe", action="store_true", help="探测禅道连通性")
     parser.add_argument("--from", dest="source", default="", help="指定结果文件（默认取最新）")
-    parser.add_argument("--product", default=os.getenv("ZENTAO_PRODUCT", "1"), help="所属产品 id")
-    parser.add_argument("--module", default=os.getenv("ZENTAO_MODULE", "393"), help="所属模块 id")
-    parser.add_argument("--assignee", default=os.getenv("ZENTAO_ASSIGNEE", ""), help="当前指派（账号名）")
-    parser.add_argument("--feedback-by", default=os.getenv("ZENTAO_FEEDBACK", ""),
-                        help="反馈者（默认登录账号）")
-    parser.add_argument("--severity", type=int, default=int(os.getenv("ZENTAO_SEVERITY", "3")),
-                        help="严重程度 1~4（3=一般）")
-    parser.add_argument("--pri", type=int, default=int(os.getenv("ZENTAO_PRI", "3")),
-                        help="优先级 1~4（3=中）")
-    parser.add_argument("--type", dest="bug_type", default=os.getenv("ZENTAO_TYPE", "codeerror"),
-                        help="类型：codeerror/codeimprovement/others...")
-    parser.add_argument("--opened-build", default=os.getenv("ZENTAO_OPENED_BUILD", "trunk"),
-                        help="影响版本：trunk=主干（默认），也可传 build id")
-    parser.add_argument("--keywords", default=os.getenv("ZENTAO_KEYWORDS", DEFAULT_KEYWORDS),
-                        help="关键词（默认 自动化）")
     parser.add_argument("--repeat", type=int, default=int(os.getenv("ZENTAO_REQUIRE_REPEAT", "2")),
-                        help="稳定性要求：同一用例历史失败次数 >= 该值才提单（默认 2，1=放宽）")
-    parser.add_argument("--include-env", action="store_true",
-                        help="同时提交环境类失败（110106/超时/5xx 等，默认不提）")
-    parser.add_argument("--include-case", action="store_true",
-                        help="同时提交用例/数据类失败（变量未定义/不存在 等，默认不提）")
-    parser.add_argument("--submit", action="store_true", help="真正提交到禅道（默认只出草稿）")
+                        help="稳定性要求：历史失败次数 >= 该值（默认 2）")
+    parser.add_argument("--include-env", action="store_true", help="同时提交环境类失败")
+    parser.add_argument("--include-case", action="store_true", help="同时提交用例/数据类失败")
+    parser.add_argument("--submit", action="store_true", help="真正提交（默认只出草稿）")
     parser.add_argument("--yes", action="store_true", help="确认提交（安全开关）")
-    parser.add_argument("--delete-on-verify", action="store_true",
-                        help="验证用：提交成功后立即删除该单")
+    parser.add_argument("--delete-on-verify", action="store_true", help="提交后立即删除（自检用）")
+    parser.add_argument("--severity", type=int, default=int(os.getenv("ZENTAO_SEVERITY", "3")))
+    parser.add_argument("--pri", type=int, default=int(os.getenv("ZENTAO_PRI", "3")))
+    parser.add_argument("--type", dest="bug_type", default=os.getenv("ZENTAO_TYPE", "codeerror"))
     args = parser.parse_args(argv)
 
     if args.probe:
@@ -493,16 +342,13 @@ def main(argv=None):
         print("没有找到失败用例（先跑一遍用例，或用 --from 指定结果文件）")
         return 0
 
-    env_name = os.getenv("ENV", "测试环境")
-
-    # ---- 过滤：只提「断言失败 + 稳定复现」的用例 ----
-    annotate(failures, history_failure_counts())
-    allow_classes = {"ASSERT"} if not args.include_env else {"ASSERT", "ENV"}
-    if args.include_case:
-        allow_classes.add("CASE")
+    history = history_failure_counts()
+    allow = {"ASSERT"} | ({"ENV"} if args.include_env else set()) | ({"CASE"} if args.include_case else set())
     accepted, rejected = [], []
     for item in failures:
-        if item["class"] not in allow_classes:
+        item["class"] = classify(item["reason"])
+        item["repeat"] = history.get((item["suite"], item["case_id"], item["name"]), 1)
+        if item["class"] not in allow:
             rejected.append((item, f"非断言失败（{item['class']}）"))
         elif item["repeat"] < args.repeat:
             rejected.append((item, f"疑似偶发（历史失败 {item['repeat']} 次 < 要求 {args.repeat} 次）"))
@@ -513,25 +359,37 @@ def main(argv=None):
         print(f"按规则不提 {len(rejected)} 条：")
         for item, why in rejected[:10]:
             print(f"  - {item['case_id']} {item['name'][:30]} → {why}")
-        if len(rejected) > 10:
-            print(f"  ... 其余 {len(rejected) - 10} 条略")
     if not accepted:
-        print("\n没有符合「断言失败 + 稳定复现」的用例，不生成提单草稿。")
-        print("调整规则：--include-env（含环境问题）/ --include-case（含用例问题）/ --repeat 1（放宽复现次数）")
+        print("\n没有符合「断言失败 + 稳定复现」的用例，不生成提单。")
+        print("放宽：--repeat 1 / --include-env / --include-case")
         return 0
 
-    clusters = cluster(accepted)
-    drafts = build_draft(clusters, env_name, args.product, args.module, args.assignee,
-                         args.severity, args.pri, args.bug_type, files,
-                         opened_build=args.opened_build, feedback_by=args.feedback_by,
-                         keywords=args.keywords)
-    md_path, xlsx_path = write_draft(drafts)
-    print(f"失败用例 {len(failures)} 条，按根因聚合成 {len(drafts)} 条缺陷草稿")
-    print(f"  Markdown：{md_path}")
-    print(f"  Excel   ：{xlsx_path}")
-    if args.submit:
-        return submit(drafts, args, files)
-    print("未提交（默认只出草稿）。核对无误后：python run.py zentao --submit --yes")
+    auto = os.getenv("ZENTAO_AUTO_SUBMIT", "false").strip().lower() in ("true", "1", "yes", "y", "on")
+    will_submit = args.submit and (args.yes or auto)
+    if args.submit and not will_submit:
+        print("[安全拦截] 未加 --yes，且 ZENTAO_AUTO_SUBMIT 不是 true → 只出草稿")
+
+    print(f"\n准备提单 {len(accepted)} 条（每条都会带：步骤 / 接口请求返回 / 截图）\n")
+    for item in accepted:
+        evidence = build_evidence(item)
+        print("-" * 70)
+        print(f"用例：{item['case_id']} {item['name']}")
+        print(f"判定：{item['class']}｜历史失败 {item['repeat']} 次")
+        calls = evidence.get("api_calls") or []
+        keyword = evidence.get("api_keyword") or ""
+        picked = [c for c in calls if keyword and keyword in (c.get("url") or "")] or calls[-1:]
+        print(f"接口：{(picked[0].get('url') if picked else '（证据里没有接口记录）')}")
+        print(f"截图：{'、'.join(os.path.basename(p) for p in evidence.get('screenshots') or []) or '（无）'}")
+        if will_submit:
+            evidence_bug.file_bug(evidence, submit=True, severity=args.severity, pri=args.pri,
+                                  bug_type=args.bug_type)
+        else:
+            md = evidence_bug.write_draft(evidence, evidence_bug.build_steps_html(evidence),
+                                          evidence_bug.build_title(evidence))
+            print(f"草稿：{md}")
+
+    if not will_submit:
+        print("\n未提交（草稿模式）。核对无误后：python run.py zentao --submit --yes")
     return 0
 
 

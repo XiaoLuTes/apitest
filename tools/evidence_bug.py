@@ -92,6 +92,7 @@ def build_steps_html(evidence, image_ids=None):
     parts.append("<p><strong>[结果]</strong></p>")
     parts.append(f"<p>{_esc(evidence.get('actual') or '见下方接口返回与截图')}</p>")
     keyword = evidence.get("api_keyword") or ""
+    # 指定了关键字就按关键字挑；否则取"最后一次接口"（失败前刚发生的那次操作）
     picked = [c for c in api_calls if keyword and keyword in (c.get("url") or "")]
     for call in (picked[-1:] or api_calls[-1:]):  # 只带"本次操作"对应的一条接口
 
