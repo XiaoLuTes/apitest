@@ -2,9 +2,9 @@
 """现场采集：登录（需要时人工扫码）→ 按菜单路径导航 → 导出候选定位器
 
 用法：
-    python tools/ui_capture.py --menu "Payroll/薪资包管理" --out reports/_probe
+    python tools/ui_capture.py --menu "Payroll/算薪/薪资包管理" --out reports/_probe
     python tools/ui_capture.py --url https://test-admin.gsrtech.com/payrollSalaryPackage
-    python tools/ui_capture.py --menu "Payroll/薪资包管理" --headless
+    python tools/ui_capture.py --menu "Payroll/算薪/薪资包管理" --headless
 
 产物（写到 --out 目录）：
     01_login.png        登录前截图（需要扫码时用）
@@ -18,6 +18,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import time
 
@@ -99,7 +100,7 @@ def dump(page, out_dir, tag):
 
 
 def click_text(page, text, timeout=8000):
-    """按可见文本点击（菜单/按钮都适用），返回是否点到"""
+    """按可见文本点击（按钮等通用场景），返回是否点到"""
     deadline = time.time() + timeout / 1000
     while time.time() < deadline:
         for getter in (lambda: page.get_by_text(text, exact=True),
@@ -114,6 +115,34 @@ def click_text(page, text, timeout=8000):
                     item = loc.nth(i)
                     if item.is_visible():
                         item.click(timeout=3000)
+                        return True
+                except Exception:                 # noqa: BLE001
+                    continue
+        page.wait_for_timeout(500)
+    return False
+
+
+def click_menu(page, text, timeout=8000):
+    """点击左侧菜单项（antd pro 菜单）
+
+    菜单是多级结构：一级/二级是 .ant-menu-submenu-title（点开展开），叶子是 .ant-menu-item。
+    用「精确匹配文本」定位，避免 '算薪' 误点到 '算薪日历' / '算薪数据源'。
+    """
+    pattern = re.compile(r"^\s*%s\s*$" % re.escape(text))
+    deadline = time.time() + timeout / 1000
+    while time.time() < deadline:
+        # 先试可展开的子菜单标题，再试叶子项
+        for selector in (".ant-menu-submenu-title", ".ant-menu-item"):
+            try:
+                loc = page.locator(selector).filter(has_text=pattern)
+                count = loc.count()
+            except Exception:                     # noqa: BLE001
+                continue
+            for i in range(min(count, 6)):
+                item = loc.nth(i)
+                try:
+                    if item.is_visible():
+                        item.click(timeout=4000)
                         return True
                 except Exception:                 # noqa: BLE001
                     continue
@@ -177,12 +206,12 @@ def main():
         elif args.menu:
             for part in [p for p in args.menu.split("/") if p]:
                 print("[nav] 点击菜单:", part)
-                if not click_text(page, part):
+                if not click_menu(page, part):
                     print("[nav] 未找到菜单项:", part)
                     dump(page, args.out, "menu_fail")
                     browser.close()
                     return 3
-                page.wait_for_timeout(1500)
+                page.wait_for_timeout(1800)
             page.wait_for_timeout(3000)
         print("[nav] 当前 URL:", page.url)
 

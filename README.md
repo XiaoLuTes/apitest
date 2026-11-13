@@ -165,8 +165,8 @@ python run.py ui 薪资包管理查询 --headless
 ## 8. 现场采集工具（找元素）
 
 ```powershell
-# 按菜单路径导航并导出候选定位器 + 截图 + HTML（登录态失效时会等你扫码）
-python tools/ui_capture.py --menu "Payroll/薪资包管理"
+# 按菜单路径导航并导出候选定位器 + 截图 + HTML（支持多级菜单，登录态失效时会等你扫码）
+python tools/ui_capture.py --menu "Payroll/算薪/薪资包管理" --headless
 # 直接打开指定 URL
 python tools/ui_capture.py --url https://test-admin.gsrtech.com/center/payroll/payrollSalary/packageManagement
 # 顺带验证按关键字搜索的结果
@@ -175,6 +175,13 @@ python tools/ui_capture.py --url <URL> --query SAL-20261112-0001
 
 产物写到 `reports/_probe/`：输入框（含 form-item 标签）、按钮、表头、首行单元格、页面 HTML。
 后续丢需求给我时，我用它现场采集元素，再写进定位器 YAML。
+
+登录态说明：token 模式（.env 有 `ACCESS_TOKEN_ADMIN`）下采集工具同样免扫码；
+没有 token 时复用 `reports/auth/*.json`，都失效则会在有头浏览器里等你扫码（`--wait` 秒）。
+
+PyCharm 直接运行：`api/conftest.py` / `ui/conftest.py` 已带 sys.path 引导，
+所以即使在 `api/`、`ui/` 子目录下右键运行也不会 import 失败；
+但直接跑用的是 .env 里的默认项目（`API_PROJECT` / `UI_PROJECT`），跑指定项目请用 `run.py` 或改 .env。
 
 ## 9. 说明
 
