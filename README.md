@@ -75,6 +75,7 @@ pip install -r requirements.txt
 python -m playwright install chromium      # UI 用例集首次需要
 
 python run.py --list                       # 看有哪些用例集/项目
+python run.py check-token                  # token 预检（过期直接拦下，不进入执行）
 python run.py lint                         # 执行前静态检查（秒级）
 python run.py api 薪资包管理查询             # 跑接口用例
 python run.py ui  薪资包管理查询 --headless  # 跑 UI 用例（免扫码）
