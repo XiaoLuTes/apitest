@@ -369,6 +369,47 @@ UI 单 [#9782](http://172.21.100.100:8101/zentao/bug-view-9782.html)（带页面
 没有证据包时（比如只跑过旧结果文件），提单会从结果文件重建：接口信息取 `url`/`data`/`response` 列。
 接口单的正文就是「接口 / 请求参数 / 接口返回 / 期望 / 实际」这套结构；截图只对 UI 单有意义。
 
+### 提单字段对照（我们 → 禅道）
+
+**实际使用的字段**（其余走默认值）
+
+| 我们的概念 | 禅道字段（表单 name / REST key） | 页面标签 | 取值 | `.env` |
+| --- | --- | --- | --- | --- |
+| 标题 | `title` | Bug标题 | `【自动化-<ENV>】<用例名>：<现象>`（≤255） | — |
+| 重现步骤 | `steps` | 重现步骤（`zen-editor` 富文本） | HTML，结构见上表 | — |
+| 所属产品 | `product` | 所属产品 | `1` = GSR OMNI | `ZENTAO_PRODUCT` |
+| 所属模块 | `module` | 所属模块 | `393` = `/Payroll&结算` | `ZENTAO_MODULE` |
+| 严重程度 | `severity` | 严重程度 | `1`~`4`（`3`=一般） | `ZENTAO_SEVERITY` |
+| 优先级 | `pri` | 优先级 | `1`~`4`（`3`=中） | `ZENTAO_PRI` |
+| 类型 | `type` | Bug类型 | `codeerror`=代码错误 / `codeimprovement`=代码改进 / `others`=其他 | `ZENTAO_TYPE` |
+| 影响版本 | `openedBuild[]` | 影响版本 | **必须是数组**：`["trunk"]` = 主干 | `ZENTAO_OPENED_BUILD` |
+| 当前指派 | `assignedTo` | 当前指派 | 禅道**账号名**（`Louie.lu`，不是中文姓名） | `ZENTAO_ASSIGNEE` |
+| 反馈者 | `feedbackBy` | 反馈者 | 禅道**账号名**，留空默认用登录账号 | `ZENTAO_FEEDBACK` |
+| 关键词 | `keywords` | 关键词 | `自动化`（便于检索自动化提单） | `ZENTAO_KEYWORDS` |
+| 截图附件 | `files[]` | 附件 | 仅 UI 单；走**页面表单**上传 | — |
+
+**页面还有但当前没用到的字段**（需要时在 `core/zentao.py::create_bug` 的 `extra={...}` 里加即可）
+
+| 页面标签 | 字段 | 说明 |
+| --- | --- | --- |
+| 截止日期 | `deadline` | 日期 |
+| 所属项目 / 所属执行 | `project` / `execution` | 关联迭代，影响"项目权限"校验 |
+| 所属计划 | `plan` | 计划 id，`0` = 不关联 |
+| 来源用例 / 相关需求 / 相关任务 | `case` / `story` / `task` | id，`0` = 不关联 |
+| 通知邮箱 / 抄送给 | `notifyEmail` / `mailto[]` | 抄送账号列表 |
+| 浏览器 / 操作系统 | `browser[]` / `os[]` | 多选 |
+| 影响版本「所有」/ 当前指派「加载所有」 | `allBuilds` / `allUsers` | 勾选后放开范围 |
+| 颜色 | `color` | 缺陷标记色 |
+
+**几个容易踩的取值规则（都实测过）**
+
+1. `openedBuild` **必须数组**：传 `0` 或 `"0"` 会报 `『影响版本』不能为空`；正确写法 `["trunk"]`。
+2. `assignedTo` / `feedbackBy` 要**账号名**（`Louie.lu`），填中文姓名会指派失败。
+3. 读接口返回时字段形态不同：`openedBuild` 是 `[{id:"trunk",title:"主干"}]`、`assignedTo` 是 `{account,realname}`。
+4. 附件只能走页面表单（`files[]`）；REST `POST /api.php/v1/files` 一律被拒。
+5. 改单必须用 `PUT /api.php/v1/bugs/{id}`（`PATCH` 返回 200 但不生效）；`DELETE` 只是软删除。
+6. 步骤里的 `<img src="{文件id}.png">` 通过 API 写入不会渲染，截图以附件形式挂单、正文注明文件名。
+
 ### 提单过滤规则（默认只提「断言失败 + 稳定复现」）
 
 | 判定 | 处理 | 说明 |
