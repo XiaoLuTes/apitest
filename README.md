@@ -7,6 +7,8 @@
 | 接口自动化 `api` | `api/` | Excel 驱动（pytest parametrize） | `api/testcase/*.xlsx` | `api/test_file.py` |
 | UI 自动化 `ui` | `ui/` | YAML 驱动（Playwright） | `ui/testcases/**/*.yaml` | `ui/test_from_yaml.py` |
 
+> 用 AI 执行测试时：**先读根目录 [`AGENTS.md`](AGENTS.md)**（需求拆分→用例→执行→提单的总流程），提单前再读 [`PROMPT_bug_filing.md`](PROMPT_bug_filing.md)。
+
 共用：`.env` 配置、日志（`core/logger.py`）、报告目录（`reports/`）、Allure 结果、pytest 根配置、统一入口 `run.py`。
 两个用例集都用 **数据文件**（Excel / YAML）描述用例，所以新增用例通常只需要写数据文件，不用写代码。
 
@@ -17,6 +19,8 @@ autotest/
 ├─ run.py                    统一入口：api / ui / all / lint / --list
 ├─ conftest.py               pytest 根配置（sys.path、报告目录、用例集校验）
 ├─ pytest.ini                两个用例集共用的 pytest 配置
+├─ AGENTS.md                 AI 执行手册（从需求拆分到提单的总流程，开工先读）
+├─ PROMPT_bug_filing.md      禅道提单硬约束提示词
 ├─ .env / .env.example       统一配置（数据库、token、企微 Webhook、默认项目）
 ├─ requirements.txt
 ├─ core/                     公共层
@@ -26,7 +30,6 @@ autotest/
 ├─ tools/
 │   ├─ lint_cases.py         用例静态检查（执行前的机器初审）
 │   ├─ selftest_lint.py      lint 自身的回归自测（17 类埋错，验证规则是否生效）
-│   ├─ PROMPT_bug_filing.md  禅道提单约束提示词（可当 AI 指令）
 │   └─ ui_capture.py         现场采集：登录 → 菜单导航 → 导出候选定位器/HTML/截图
 ├─ api/                      接口用例集
 │   ├─ common/               请求、断言、变量、Excel、数据库、重试、薪资包工具
@@ -319,7 +322,7 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 【自动化-测试环境】管理端｜薪资包管理｜按薪资包ID查询：断言项[$.total]失败 期望值: 1 实际值: 0
 ```
 
-> **提单约束提示词**：`tools/PROMPT_bug_filing.md` —— 什么该提/不该提、单据必须包含哪些段落、字段取值与禁区、提交前自检清单。可直接整段作为 AI 提示词使用。
+> **提单约束提示词**：仓库根目录 `PROMPT_bug_filing.md` —— 什么该提/不该提、单据必须包含哪些段落、字段取值与禁区、提交前自检清单。可直接整段作为 AI 提示词使用。
 
 ### 提单是怎么串起来的（接口 / UI 两个入口共用一套）
 
