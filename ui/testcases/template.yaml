@@ -1,0 +1,67 @@
+  - step_name:
+    element:
+    action:
+    data:
+    expected: "action为input时，带入这个字段，且值非false时会去校验输入的文本"
+
+  - step_name:
+    element:
+    action:
+    data:
+    expected:
+
+
+  - id:
+    name:
+    steps:
+        step_name:
+        element:
+        action:
+        data:
+        expected:
+    result:
+
+
+
+- id: 控制台-002
+  name: 进入招聘平台
+  steps:
+  - step_name: 1
+    element: talent_button
+    action: click
+    data: null
+    expected: null
+  - step_name: 2
+    element: jobManagement
+    action: check_exists
+    data: null
+    expected: null
+  result: null
+- id: 岗位管理-003
+  name: 进入岗位管理
+  steps:
+  - step_name: 1
+    element: jobManagement
+    action: click
+    data: null
+    expected: null
+  - step_name: 2
+    element: job_table
+    action: check_exists
+    data: null
+    expected: null
+  result: null
+- id: 发起岗位流程-004
+  name: 发起岗位流程
+  steps:
+  - step_name: 1
+    element: new_job
+    action: click
+    data: null
+    expected: null
+  - step_name: 2
+    element: ant_class_body
+    action: check_exists
+    data: null
+    expected: null
+  result: null

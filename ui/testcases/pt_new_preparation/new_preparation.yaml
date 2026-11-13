@@ -1,0 +1,304 @@
+test_cases:
+- id: 招聘平台-2
+  name: 候选人节点流转
+  page: gsr_admin_page
+  steps:
+  - step_name: 5、点击招聘平台
+    element: talent_button
+    action: click
+    data: null
+  - step_name: 6、验证进入招聘平台
+    element: jobManagement
+    action: check_exists
+    data: 存在
+  - step_name: 7、点击进入岗位管理
+    element: jobManagement
+    action: click
+    data: null
+  - step_name: 8、点击刚才创建的岗位
+    element: position_new
+    action: click
+    data: null
+  - step_name: 9、等待ai返回简历
+    element: candidate_1
+    action: wait_exists
+    data: null
+  - step_name: 10、勾选初筛页第一位候选人
+    element: choose_1
+    action: click
+    data: null
+  - step_name: 11、点击下个环节按钮
+    element: next_round_first
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 12、进入匹配页
+    element: match
+    action: click
+    data: null
+  - step_name: 13、点击匹配页全选按钮
+    element: choose_all_match
+    action: click
+    data: null
+  - step_name: 14、点击匹配页下一环节
+    element: next_round_match
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 15、点击内部面试
+    element: interview
+    action: click
+    data: null
+  - step_name: 16、点击内部面试全选按钮
+    element: choose_all_interview
+    action: click
+    data: null
+  - step_name: 17、点击内部面试下一环节
+    element: next_round_interview
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 18、点击推荐页
+    element: recommend
+    action: click
+    data: null
+  - step_name: 19、点击推荐页全选按钮
+    element: choose_all_recommend
+    action: click
+    data: null
+  - step_name: 20、点击推荐页下一环节按钮
+    element: next_round_recommend
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 21、点击三方面试页
+    element: three_interview
+    action: click
+    data: null
+  - step_name: 22、点击三方面试页全选按钮
+    element: choose_all_three
+    action: click
+    data: null
+  - step_name: 23、点击三方面试页下一环节按钮
+    element: next_round_three
+    action: click
+    data: null
+  - step_name: 24、点击弹窗确认按钮
+    element: three_enter
+    action: click
+    data: null
+  - step_name: 25、点击offer时间录入弹窗确认按钮
+    element: offer_info_enter
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 26、点击可发offer人选页
+    element: allow_offer
+    action: click
+    data: null
+  - step_name: 27、校验offer人选页数据展示
+    element: allow_offer
+    action: screenshot
+    data: offer人选页
+  - step_name: 28、点击进入岗位管理
+    element: jobManagement
+    action: click
+    data: null
+  - step_name: 29、点击刚才创建的岗位
+    element: position_new
+    action: click
+    data: null
+  - step_name: 30、进入可发offer人选页
+    element: allow_offer
+    action: click
+    data: null
+  - step_name: 31、选择第一位候选人
+    element: allow_offer_1
+    action: click
+    data: null
+  - step_name: 32、点击发起子流程
+    element: allow_offer_enter
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 33、进入编制管理
+    element: preparation
+    action: click
+    data: null
+  - step_name: 34、点击第一条数据查看按钮
+    element: preparation_view_1
+    action: click
+    data: null
+  - step_name: 35、进入发送offer页
+    element: send_offer
+    action: click
+    data: null
+  - step_name: 36、输入email
+    element: email_input
+    action: input
+    data: louie.lu@gsrtech.com
+    expected: true
+  - step_name: 37、输入offer日期
+    element: offer_date
+    action: input
+    data: '2025-02-10'
+    expected: true
+  - step_name: 38、输入入职日期
+    element: entry_date
+    action: input
+    data: '2025-02-11'
+    expected: true
+  - step_name: 39、选择没有保证期
+    element: probation_not
+    action: click
+    data: null
+  - step_name: 40、上传offer文件
+    element: hidden_offer_upload
+    action: upload
+    data: testcases/pt_new_preparation/JD.pdf
+  - step_name: 41、薪资输入50000
+    element: annual_salary
+    action: input
+    data: '50000'
+    expected: true
+  - step_name: 42、薪资单位输入USD
+    element: salary_currency
+    action: input
+    data: USD
+  - step_name: 43、回车确认薪资单位
+    element: salary_currency
+    action: enter
+    data: null
+  - step_name: 44、点击提交
+    element: submit
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: preparation
+    action: wait
+    data: '2'
+  - step_name: 45、退回编制管理页
+    element: preparation
+    action: click
+    data: null
+  - step_name: 46、等待编制状态变更
+    element: instance_status
+    action: wait_text
+    data: 一次开票发起
+  - step_name: 47、点击查看按钮
+    element: preparation_view_1
+    action: click
+    data: null
+  - step_name: 48、点击开票按钮
+    element: invoice
+    action: click
+    data: null
+  - step_name: 等待1秒
+    element: null
+    action: wait
+    data: '1'
+  - step_name: 49、点击发票赎期天数选择栏
+    element: hidden_invoice_redemption
+    action: click
+    data: null
+  - step_name: 50、回车确认
+    element: hidden_invoice_redemption
+    action: enter
+    data: null
+  - step_name: 51、发票天数输入3
+    element: hidden_invoice_days
+    action: input
+    data: '3'
+  - step_name: 52、结算币种输入AUD
+    element: hidden_settlement_currency
+    action: input
+    data: AUD
+  - step_name: 53、回车确认
+    element: hidden_settlement_currency
+    action: enter
+    data: null
+  - step_name: 54、提交开票
+    element: invoice_submit
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 55、点击查看按钮
+    element: preparation_view_1
+    action: click
+    data: null
+  - step_name: 等待1秒
+    element: null
+    action: wait
+    data: '1'
+  - step_name: 56、点击提交按钮
+    element: end_invoice_submit
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 57、入职回访-提交按钮
+    element: submit
+    action: click
+    data: null
+  - step_name: 等待3秒
+    element: null
+    action: wait
+    data: '3'
+  - step_name: 58、退回编制管理页
+    element: preparation
+    action: click
+    data: null
+  - step_name: 59、等待流程实例状态变更为'成功交付'
+    element: instance_status
+    action: wait_text
+    data: 成功交付
+  - step_name: 60、点击查看按钮
+    element: preparation_view_1
+    action: click
+    data: null
+  - step_name: 等待2秒
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 61、成功交付页点击提交
+    element: after_onboarding
+    action: click
+    data: null
+  - step_name: 等待3秒
+    element: null
+    action: wait
+    data: '3'
+  - step_name: 62、过保回访页点击提交
+    element: end_invoice_submit_2
+    action: click
+    data: null
+  - step_name: 63、验证流程实例状态为'结束'
+    element: instance_status
+    action: check_text
+    data: 结束
+  result: '失败: Message: 尝试查找隐藏元素失败: talent_button
+
+    '

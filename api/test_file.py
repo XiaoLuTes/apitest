@@ -1,0 +1,21 @@
+import pytest
+from api.common import excel_read
+from api.config.setting import setting
+from api.common.executor import Executor
+
+
+filepath = setting.TEST_FLIELOAD
+# 测试用例文件路径
+test_url = setting.TEST_URL
+# 测试环境路径
+class TestFile:
+    @pytest.fixture(scope="function", autouse=True)
+    def setup_test(self):
+        """测试类级别初始化"""
+        self.executor = Executor()
+        yield
+
+    # excel用例执行
+    @pytest.mark.parametrize('file', excel_read.Excel().read_excel(filepath))
+    def test_excel_cloud(self, file):
+        self.executor.execute(file)

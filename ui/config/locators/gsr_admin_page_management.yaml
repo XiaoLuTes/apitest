@@ -1,0 +1,160 @@
+gsr_admin_page_management:
+  username_input:   # 姓名输入框
+    by: "id"
+    value: "username"
+  password_input:   # 密码输入框
+    by: "id"
+    value: "password"
+  code_input:   # 验证码输入框
+    by: "id"
+    value: "code"
+  login_button:   # 登录按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div[2]/form/button"
+  user_part: # 用户中心（右上角）
+    by: "xpath"
+    value:  "//div[@id='root']/div/div/div[2]/header[2]/div/div[3]/div/div/div/div[@class='ant-space-item'][2]"
+  management_button:  # 管理菜单按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div/ul/li[1]"
+  payroll_list:  # payroll主菜单
+    by: "xpath"
+    value: "//a[@title='Payroll']"
+  ettlement_list:  # 结算管理（新）主菜单
+    by: "xpath"
+    value:  "//a[@title='结算管理（新）']"
+  payment_settlement:  # 收款结算
+    by: "xpath"
+    value: "//a[@title='收款结算']"
+  eor_settlement:  # EOR类收款
+    by: "xpath"
+    value: "//a[@title='EOR类收款']"
+  create_salary_package:  # 创建薪资包
+    by: "xpath"
+    value: "//button[text()='薪资包']"
+  client_input:  # 客户选择框
+    by: "xpath"
+    value: "//input[@id='clientId']"
+  client_text:  # 客户输入验证
+    by: "xpath"
+    value: "//div[contains(@class,'ant-form-item') and .//label[@for='clientId']]//span[contains(@class,'ant-select-selection-item')]"
+  client_contract_input:  # 客户合同选择框
+    by: "xpath"
+    value: "//input[@id='clientContractId']"
+  client_contract_text:  # 客户合同验证框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-form-item') and .//label[@for='clientContractId']]//span[contains(@class,'ant-select-selection-item')]"
+  country_input: # 国家/地区选择框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal')]//input[@id='country']"
+  country_text:  # 国家/地区验证框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-form-item') and .//label[@for='country']]//span[contains(@class,'ant-select-selection-item')]"
+  service_month_input:  # 服务月份选择框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal')]//input[@id='servicesTime']"
+  onboarding_country_input:  # 就职国家选择框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal')]//input[@id='onboardingCountry']"
+  onboarding_country_text:  # 就职国家验证框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-form-item') and .//label[@for='onboardingCountry']]//span[contains(@class,'ant-select-selection-item')]"
+  consultan_flag:  # 员工性质选择框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal')]//input[@id='consultantFlag']"
+  consultanflag_text:  # 员工性质校验框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-form-item') and .//label[@for='consultantFlag']]//span[contains(@class,'ant-select-selection-item')]"
+  confirm_button_createEOR:  # 创建EOR薪资包弹窗-确认按钮
+    by : "xpath"
+    value: "//div[contains(@class,'ant-modal-footer')]//button[contains(@class,'ant-btn-primary')]"
+  settlement_package_code:  # EOR薪资包code-提取用
+    by: "xpath"
+    value: "//div[contains(@class,'ant-form-item') and .//label[@for='settlementPackageCode']]//div[contains(@class,'ant-form-item-control-input-content')]"
+  create_employee_settlement:  # 创建员工结算单
+    by: "xpath"
+    value: "//div[contains(@class,'ant-pro-table')]//button[normalize-space()='创建员工结算单']"
+  employee_input:  # 员工姓名选择框
+    by: "xpath"
+    value: "//div[@class='bill-modal-content']//input[@id='externalEmployeeId']"
+  employee_text:  # 员工姓名校验框
+    by: "xpath"
+    value: "//div[@class='bill-modal-content']//span[contains(@class,'ant-select-selection-item')]"
+  staffid_value:  # 员工staffid-提取，用于后续校验
+    by: "xpath"
+    value: "//div[@class='bill-modal-content']//input[@id='staffId']"
+  confirm_employee_settlement:  # 确认员工结算单
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal') and .//div[@class='bill-modal-content']]//div[contains(@class,'ant-modal-footer')]//button[contains(@class,'ant-btn-primary')]"
+  employee_settlement_staffid:  # 员工结算单staffid
+    by: "xpath"
+    value: "//div[@class='ant-spin-container']//div[@class='ant-table-container']//tbody//tr[2]//td[5]"
+  no_differential_advance_payment:  # 无差异预收款勾选框
+    by: "xpath"
+    value: "//label[contains(@class,'ant-checkbox-wrapper') and contains(., '无差异预收款')]"
+  merge_invoicing_yes:  # 是否合并开票-是
+    by: "xpath"
+    value: "//label[contains(@class,'ant-radio-wrapper') and contains(., '是')]"
+  confirm_to_upload:  # 待创建及确认-提交
+    by: "xpath"
+    value: "//div[contains(@class,'bottom-footer')]//button[contains(@class,'ant-btn-primary')]"
+  upload_tab:  # 待上传及处理tab
+    by: "xpath"
+    value: "//div[contains(@class,'tabs-bar')]//div[contains(@class,'tab') and text()='待上传及处理']"
+  review_business_tab:  # 待业务审核tab
+    by: "xpath"
+    value: "//div[contains(@class,'tabs-bar')]//div[contains(@class,'tab') and text()='待业务审核']"
+  review_financial_tab:  # 待财务审核tab
+    by: "xpath"
+    value: "//div[contains(@class,'tabs-bar')]//div[contains(@class,'tab') and text()='待财务审核']"
+  reviewed_tab:  # 已审核tab
+    by: "xpath"
+    value: "//div[contains(@class,'tabs-bar')]//div[contains(@class,'tab') and text()='已审核']"
+  settlement_package_code_search:  # 结算包id搜索输入栏
+    by: "xpath"
+    value: "//input[@id='settlementPackageCode']"
+  search_button:  # 待上传tab搜索按钮
+    by: "xpath"
+    value: "//button[contains(@class,'ant-btn-primary') and .//span[normalize-space()='搜 索']]"
+  settlement_package_code_list:  # 待上传及处理tab-结算包id
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table-content')]//tbody/tr[not(@aria-hidden='true')]//td[1]"
+  national_template_download:  # 下载国家模板
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table-content')]//tbody/tr[not(@aria-hidden='true')]//button[.//*[local-name()='use']/@*[local-name()='href']='#icon-a-caozuolan24-xiazai']"
+  national_template_upload_button:  # 上传国家模板-按钮
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table-content')]//tbody/tr[not(@aria-hidden='true')]//button[contains(@class,'upload-btn')]"
+  hidden_national_template_upload_input:  # 上传国家模板-input元素
+    by: "xpath"
+    value: "//input[@id='file']"
+  confirm_national_template_upload:  # 上传国家模板-确认按钮
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal') and .//input[@id='file']]//div[contains(@class,'ant-modal-footer')]//button[contains(@class,'ant-btn-primary')]"
+  luckly_sheet:  # 上传后的excel元素
+    by: "xpath"
+    value: "//div[@id='excel-container']//div[contains(@class,'luckysheet-loading-mask')]"
+  upload_result_success:  # 上传成功x条
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal-body')]//div[contains(@class,'tips')]//span[1]"
+  confirm_upload_result:  # 上传结果弹窗-确认按钮
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal') and .//div[contains(@class,'tips')]]//div[contains(@class,'ant-modal-footer')]//button[contains(@class,'ant-btn-primary')]"
+  description_upload:  # 上传成功后-暂无数据描述
+    by: "xpath"
+    value: "//tr[contains(@class,'ant-table-placeholder')]//*[contains(@class,'ant-empty-description')]"
+  review_financial_list:  # 待财务审核列表-审核操作按钮
+    by: "xpath"
+    value: "//td[contains(@class,'table-operation')]//button[2]"
+  confirm_financial_excel:  # 待财务审核excel-通过按钮
+    by: "xpath"
+    value: "//div[contains(@class,'table-footer')]//button[contains(@class,'ant-btn-primary')]"
+  confirm_next_continue:  # 继续审批下一张复选框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal') and .//div[contains(@class,'ant-modal-title') and contains(., '审核意见')]]//label[contains(@class,'ant-checkbox-wrapper') and contains(., '继续审批下一张')]"
+  review_comments:  # 审核意见输入框
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal') and .//div[contains(@class,'ant-modal-title') and contains(., '审核意见')]]//textarea[@id='reason']"
+  confirm_review_comments:  # 审核意见-通过按钮
+    by: "xpath"
+    value: "//div[contains(@class,'ant-modal') and .//div[contains(@class,'ant-modal-title') and contains(., '审核意见')]]//div[contains(@class,'ant-modal-footer')]//button[contains(@class,'ant-btn-primary')]"

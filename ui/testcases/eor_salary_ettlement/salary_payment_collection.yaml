@@ -1,0 +1,290 @@
+test_cases:
+- id: 1-创建eor薪资收款包
+  page: gsr_admin_page
+  name: 创建eor薪资收款包
+  steps:
+  - step_name: 1、点击结算管理（新）主菜单
+    element: ettlement_list
+    action: click
+    data: null
+  - step_name: 2、点击收款结算子菜单
+    element: payment_settlement
+    action: click
+    data: null
+  - step_name: 3、点击EOR类收款
+    element: eor_settlement
+    action: click
+    data: null
+  - step_name: 4、点击创建薪资包
+    element: create_salary_package
+    action: click
+    data: null
+  - step_name: 5、客户栏输入'louie测试1号客户'
+    element: client_input
+    action: input
+    data: 'louie测试1号客户'
+  - step_name: 6、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 7、验证客户栏选择'louie测试1号客户'
+    element: client_text
+    action: check_text
+    data: 'louie测试1号客户'
+  - step_name: 8、客户合同栏输入'payroll'
+    element: client_contract_input
+    action: input
+    data: 'payroll'
+  - step_name: 9、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 10、验证客户合同栏选择'测试payroll'
+    element: client_contract_text
+    action: check_text
+    data: 'payroll'
+  - step_name: 11、国家/地区栏输入‘France’
+    element: country_input
+    action: input
+    data: 'France'
+  - step_name: 12、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 13、验证国家/地区输入栏选择‘France’
+    element: country_text
+    action: check_text
+    data: 'France'
+  - step_name: 14、服务月份选择框输入‘2026-08’
+    element: service_month_input
+    action: input
+    data: '2026-08'
+  - step_name: 15、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 16、验证服务月份输入框值为‘2026-08’
+    element: service_month_input
+    action: check_value
+    data: '2026-08'
+  - step_name: 17、就职国家输入‘France’
+    element: onboarding_country_input
+    action: input
+    data: 'France'
+  - step_name: 18、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 19、验证就职国家选择‘France’
+    element: onboarding_country_text
+    action: check_text
+    data: 'France'
+  - step_name: 20、员工性质输入‘顾问’
+    element: consultan_flag
+    action: input
+    data: '顾问'
+  - step_name: 21、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 22、验证员工性质选择‘顾问’
+    element: consultanflag_text
+    action: check_text
+    data: '顾问'
+  - step_name: 23、点击确认按钮
+    element: confirm_button_createEOR
+    action: click
+    data:
+  - step_name: 24、提取EOR薪资结算包code
+    element: settlement_package_code
+    action: save_text
+    data: settlement_package_code
+  - step_name: 25、点击‘创建员工结算单’
+    element: create_employee_settlement
+    action: click
+    data:
+  - step_name: 26、员工姓名输入框选择‘louie垃圾’
+    element: employee_input
+    action: input
+    data: 'louie垃圾'
+  - step_name: 27、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 28、校验员工姓名输入栏
+    element: employee_text
+    action: check_text
+    data: 'louie垃圾'
+  - step_name: 29、提取员工staffid
+    element: staffid_value
+    action: save_value
+    data: staff_id_first
+  - step_name: 30、点击确认
+    element: confirm_employee_settlement
+    action: click
+    data:
+  - step_name: 31、通过列表staffid确认是否成功创建结算单
+    element: employee_settlement_staffid
+    action: check_text
+    data: '{staff_id_first}'
+  - step_name: 32、点击‘创建员工结算单’
+    element: create_employee_settlement
+    action: click
+    data:
+  - step_name: 33、员工姓名输入框选择‘louienewbee’
+    element: employee_input
+    action: input
+    data: 'louienewbee'
+  - step_name: 34、回车确认
+    element:
+    action: enter
+    data:
+  - step_name: 35、校验员工姓名输入栏
+    element: employee_text
+    action: check_text
+    data: 'louienewbee'
+  - step_name: 36、提取员工staffid
+    element: staffid_value
+    action: save_value
+    data: staff_id_sec
+  - step_name: 37、点击确认
+    element: confirm_employee_settlement
+    action: click
+    data:
+  - step_name: 38、通过列表staffid确认是否创建结算单
+    element: employee_settlement_staffid
+    action: check_text
+    data: '{staff_id_sec}'
+  - step_name: 39、勾选无差异预收款
+    element: no_differential_advance_payment
+    action: click
+    data:
+  - step_name: 40、勾选合并开票-是
+    element: merge_invoicing_yes
+    action: click
+    data:
+  - step_name: 41、点击确认流转至待上传
+    element: confirm_to_upload
+    action: click
+    data:
+  - step_name: 42、切换到‘待上传及处理’tab
+    element: upload_tab
+    action: click
+    data:
+  - step_name: 43、结算包id搜索框输入{settlement_package_code}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code}'
+  - step_name: 44、点击搜索
+    element: search_button
+    action: click
+    data:
+  - step_name: 45、核对列表返回结算包id为{settlement_package_code}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code}'
+  - step_name: 46、点击下载国家模板
+    element: national_template_download
+    action: download
+    data: '{settlement_package_code}.xlsx'
+  - step_name: 47、修改国家模板
+    element:
+    action: edit_excel
+    data: '{settlement_package_code}.xlsx'
+    expected: '{
+"L7":"AUD","M7":"AUD","N7":"AUD","O7":"AUD","P7":"AUD","Q7":"AUD","R7":"AUD","S7":"AUD","T7":"AUD","U7":"AUD","V7":"AUD","W7":"AUD","X7":"AUD","Y7":"AUD","Z7":"AUD","AA7":"AUD","AB7":"AUD","AC7":"AUD","AD7":"AUD","AE7":"AUD","AF7":"AUD","AG7":"AUD","AH7":"AUD","AI7":"AUD","AJ7":"AUD","AQ7":"EGP","AR7":"EGP","AS7":"EGP","AT7":"EGP","AU7":"EGP","AV7":"EGP","AW7":"EGP","AX7":"AUD","AY7":"AUD","AZ7":"AUD","BA7":"AUD","BB7":"AUD","BC7":"AUD",
+"L8":"33.00","M8":"33.00","N8":"33.00","O8":"33.00","P8":"33.00","Q8":"33.00","R8":"33.00","S8":"33.00","T8":"0.00","U8":"0.00","V8":"0.00","W8":"0.00","X8":"264.00","Y8":"0.00","Z8":"0.00","AA8":"0.00","AB8":"0.00","AC8":"0.00","AD8":"264.00","AE8":"0.00","AF8":"0.00","AG8":"0.00","AH8":"0.00","AI8":"0.00","AJ8":"264.00","AQ8":"231.00","AR8":"0.00","AS8":"0.00","AT8":"0.00","AU8":"0.00","AV8":"0.00","AW8":"0.00","AX8":"231.00","AY8":"0.00","AZ8":"0.00","BA8":"231.00","BB8":"0.00","BC8":"231.00",
+"L9":"11.00","M9":"11.00","N9":"11.00","O9":"11.00","P9":"11.00","Q9":"11.00","R9":"11.00","S9":"11.00","AO9":"1.00","AP9":"1.00","X9":"88.00","AC9":"0.00","AD9":"88.00","AI9":"0.00","AJ9":"88.00","AQ9":"77.00","AV9":"0.00","AX9":"77.00","AY9":"0.00","AZ9":"0.00","BA9":"77.00","BB9":"0.00","BC9":"77.00",
+"L10":"22.00","M10":"22.00","N10":"22.00","O10":"22.00","P10":"22.00","Q10":"22.00","R10":"22.00","S10":"22.00","AO10":"1.00","AP10":"1.00","X10":"176.00","AC10":"0.00","AD10":"176.00","AI10":"0.00","AJ10":"176.00","AQ10":"154.00","AV10":"0.00","AX10":"154.00","AY10":"0.00","AZ10":"0.00","BA10":"154.00","BB10":"0.00","BC10":"154.00"
+}
+'
+  - step_name: 48、点击上传国家模板
+    element: national_template_upload_button
+    action: click
+    data:
+  - step_name: 49、上传国家模板
+    element: hidden_national_template_upload_input
+    action: upload
+    data: 'testcases/eor_salary_ettlement/国家模板_薪资包.xlsx'
+  - step_name: 50、点击上传弹窗-确认
+    element: confirm_national_template_upload
+    action: click
+    data:
+  - step_name: 51、等待上传完成excel出现
+    element: luckly_sheet
+    action: wait_exists
+    data:
+  - step_name: 52、校验上传成功2条
+    element: upload_result_success
+    action: check_text
+    data: '成功2条'
+  - step_name: 53、点击上传完成弹窗-确认
+    element: confirm_upload_result
+    action: click
+    data:
+  - step_name: 54、等待提交成功后列表‘暂无数据’
+    element: description_upload
+    action: wait_exists
+    data:
+  - step_name: 55、点击切换至‘待财务审核’tab
+    element: review_financial_tab
+    action: click
+    data:
+  - step_name: 56、结算包id搜索框输入{settlement_package_code}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code}'
+  - step_name: 57、点击搜索
+    element: search_button
+    action: click
+    data:
+  - step_name: 58、核对列表返回结算包id为{settlement_package_code}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code}'
+  - step_name: 59、点击‘待财务审核’tab-审核按钮
+    element: review_financial_list
+    action: click
+    data:
+  - step_name: 60、等待excel组件出现
+    element: luckly_sheet
+    action: wait_exists
+    data:
+  - step_name: 61、点击通过按钮
+    element: confirm_financial_excel
+    action: click
+    data:
+  - step_name: 62、取消勾选‘继续审批下一张’
+    element: confirm_next_continue
+    action: click
+    data:
+  - step_name: 63、审核意见输入：自动化测试{replace_num}
+    element: review_comments
+    action: input
+    data: '自动化测试{replace_num}'
+  - step_name: 64、点击通过
+    element: confirm_review_comments
+    action: click
+    data:
+  - step_name: 65、等待提交成功后列表‘暂无数据’
+    element: description_upload
+    action: wait_exists
+    data:
+  - step_name: 66、切换至‘已审核’tab
+    element: reviewed_tab
+    action: click
+    data:
+  - step_name: 67、结算包id搜索框输入{settlement_package_code}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code}'
+  - step_name: 68、点击搜索
+    element: search_button
+    action: click
+    data:
+  - step_name: 69、核对列表返回结算包id为{settlement_package_code}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code}'
+
+

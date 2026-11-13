@@ -1,0 +1,192 @@
+# 招聘平台新建岗位 - 维护版元素定位器
+# 说明：
+#   1. 已重新采集并验证的元素使用「稳定 CSS 选择器」或「formily 字段 id」
+#   2. formily 字段 id（fr-77z_* / fr-ees_*）经核对与原版一致，保持不变
+#   3. 原版大量绝对路径 XPath（//*[@id='root']/div/...）已随页面改版失效，已替换
+pt_new_position_v2:
+
+  # ==================== 登录页（test-admin.gsrtech.com）====================
+  username_input:   # 用户名输入框
+    by: "id"
+    value: "username"
+  password_input:   # 密码输入框
+    by: "id"
+    value: "password"
+  code_input:       # 验证码输入框
+    by: "id"
+    value: "code"
+  login_button:     # 登录按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div[2]/form/button"
+
+  # ==================== 系统选择页（/sys）====================
+  talent_entry:     # 招聘平台入口（登录后系统选择页）
+    by: "css"
+    value: "li.system-talent"
+
+  # ==================== 招聘平台导航（test-pt.gsrtech.com）====================
+  jobManagement:    # 岗位管理菜单
+    by: "css"
+    value: 'a[href="/jobManagement"]'
+
+  # ==================== 岗位列表页 ====================
+  new_job:          # 新建岗位需求按钮
+    by: "css"
+    value: 'button:has-text("新建岗位需求")'
+
+  # ==================== 新建岗位表单 - 单选（radio）====================
+  customer_type_new:   # 岗位类型-新建客户
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-77z_customerType"]) .ant-radio-wrapper:has-text("New Customer")'
+  requirement_type_1:  # 需求类型-猎头
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-77z_recruitmentType"]) .ant-radio-wrapper:has-text("Headhunter")'
+  eor_not:             # 非 EOR 入职
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-77z_eoryn"]) .ant-radio-wrapper:has-text("N")'
+  if_ai_yes:           # 启用 AI 搜索-是
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-ees_if_AI"]) .ant-radio-wrapper:has-text("Yes")'
+  if_ai_no:            # 启用 AI 搜索-否
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-ees_if_AI"]) .ant-radio-wrapper:has-text("No")'
+  need_ai_yes:         # 需要 AI 优化-是
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-ees_needAIOptimize"]) .ant-radio-wrapper:has-text("Yes")'
+  need_ai_no:          # 需要 AI 优化-否
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-ees_needAIOptimize"]) .ant-radio-wrapper:has-text("No")'
+
+  # ==================== 新建岗位表单 - 下拉选择（select）====================
+  contract_type:       # 合同类型
+    by: "id"
+    value: "fr-77z_contractType"
+  company_name:        # 公司名称
+    by: "id"
+    value: "fr-77z_nameofClient"
+  project_manager:     # 项目负责人
+    by: "id"
+    value: "fr-77z_participantId"
+  country:             # 国家/地区
+    by: "id"
+    value: "fr-ees_country"
+
+  # ==================== 新建岗位表单 - 文本输入 ====================
+  recruitment_volume:  # 需求人数
+    by: "id"
+    value: "fr-77z_recruidNum"
+  job_title:           # 岗位标题
+    by: "id"
+    value: "fr-ees_jobTitle"
+  country_city:        # 国家/城市要求
+    by: "id"
+    value: "fr-ees_countryOrRegion"
+  ai_instruction:      # AI 描述
+    by: "id"
+    value: "fr-ees_aiInstruction"
+
+  # ==================== 新建岗位表单 - 文件上传 ====================
+  hidden_fr_upload_jd: # JD 附件（file input，隐藏元素）
+    by: "css"
+    value: 'input[type="file"]'
+  fr_upload_list:      # 已上传文件列表项（自定义上传组件）
+    by: "css"
+    value: "#jdAttachment .upload-list-item"
+
+  # ==================== 新建岗位表单 - 选中值校验 ====================
+  contract_type_check:
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-77z_contractType"]) .ant-select-selection-item'
+  company_name_check:
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-77z_nameofClient"]) .ant-select-selection-item'
+  project_manager_check:
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-77z_participantId"]) .ant-select-selection-item'
+  country_check:
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-ees_country"]) .ant-select-selection-item'
+  country_check_for_noai:
+    by: "css"
+    value: 'div.ant-form-item.fr-field:has(label[for="fr-ees_country"]) .ant-select-selection-item'
+
+  # ==================== 启动按钮 ====================
+  start:              # 启 动 按钮
+    by: "css"
+    value: 'button:has-text("启 动")'
+
+  # ==================== 启动后流程（formily id 稳定，保留原 id 定位）====================
+  hidden_project_possessor:   # 岗位确认页-项目负责人
+    by: "id"
+    value: "fr-77z_possessorId"
+  priority_C:                 # 优先级 C
+    by: "xpath"
+    value: "//*[@id='fr-77z_companyPriority']/label[3]"
+  email_subject:              # 邮件标题
+    by: "id"
+    value: "fr-ees_emailSubject"
+  email_template:             # 邮件模板
+    by: "id"
+    value: "fr-ees_emailTemplate"
+  exchange_type_offer:        # 汇率类型-offer 时间
+    by: "xpath"
+    value: "//*[@id='exchangeRateType']/label[1]"
+  taxrate_1:                  # 税率 6%
+    by: "xpath"
+    value: "//*[@id='taxRate']/label[1]"
+
+  # ==================== 启动后流程（⚠️ 原版绝对路径 XPath，未验证，需环境恢复后重新采集）====================
+  project_possessor_check:
+    by: "xpath"
+    value: "/html/body/div[1]/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[9]/div/div/div[2]/div/div/div/div/span/span[2]"
+  submit_confirm:
+    by: "xpath"
+    value: "/html/body/div[1]/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[3]/button"
+  entry_contract:
+    by: "xpath"
+    value: "/html/body/div/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[2]/div/div/div[1]/div[2]/div/div[3]/div"
+  related_contract:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[2]/div/div[2]/div/div/div/div/span"
+  related_contract_check:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[2]/div/div[2]/div/div/div/div[1]/span/span[2]"
+  pricing_model:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[3]/div/div[2]/div/div/div/div/span"
+  pricing_model_check:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[3]/div/div[2]/div/div/div/div[1]/span"
+  submit_contract:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[2]/button"
+  position_new:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]/div/div[2]/div/div/div/div/div/table/tbody/tr[2]/td[2]/div"
+  candidate_1:
+    by: "xpath"
+    value: "//tbody[@class='ant-table-tbody']/tr[2]"
+  choose_1:
+    by: "xpath"
+    value: "//tbody[@class='ant-table-tbody']/tr[2]/td[1]/label/span"
+  next_round_first:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div/div/div/div[1]/button"
+  match:
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[2]/div"
+  change_email:
+    by: "xpath"
+    value: "//tbody[@class='ant-table-tbody']/tr[2]/td[5]/div/button"
+  email_input:
+    by: "xpath"
+    value: "//input[@placeholder='请输入邮箱地址']"
+  email_save:
+    by: "xpath"
+    value: "//div[@class='ant-modal-footer']/button[2]"
+  send_email:
+    by: "xpath"
+    value: "//div[@class='ant-tabs-content-holder']/div/div[2]/div[1]/div/div[4]/button"
+  sure_send:
+    by: "xpath"
+    value: "//div[@class='ant-tabs-content-holder']/div/div[2]/div[1]/div/div[4]/button"

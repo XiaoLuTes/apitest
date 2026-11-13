@@ -1,0 +1,745 @@
+# ============================================================================
+# EOR 薪资收款包链路（v2 · 2026-11 维护版）
+#
+# 业务链路：
+#   结算管理（新）→ 收款结算 → EOR类收款
+#   ① 建包：客户 + 客户合同 + 国家/地区 + 服务月份 + 就职国家 + 员工性质
+#            → 生成结算包 code（CPP+YYYYMMDD+4位）            【tab：待创建及确认】
+#   ② 建单：一名员工一条「员工结算单」（CEP+YYYYMMDD+4位），系统回填 staffId
+#   ③ 提交：勾「无差异预收款」+「合并开票=是」               【tab：待上传及处理】
+#   ④ 上传：下载国家模板 → 填薪资项金额 → 上传解析          【tab：待财务审核】
+#   ⑤ 审核：财务审核 excel 通过 + 审核意见                  【tab：已审核】
+#   ⑥ 已审核为终止态；收款结算（发起收款/核销）下期再做
+#
+# 链路定数（2026-11 数据库实测）：客户 528 louie测试1号客户-预收形票 / 客户合同 测试payroll /
+#   客户EOR合同 测试测试法国2 / France / services_time 2026-08 这条组合已跑过 88 次，
+#   顾问包员工用 louie垃圾测试(CE31PGIN)、a-louienewbee测试(CE3TWVHC)，
+#   非顾问包员工用 louie测试-本地雇员(CE0YPUBT)。
+#   待业务审核(tag=3)在 2026-07/08 之后没再出现过，当前链路是 2 → 4 → 5 直达。
+#
+# ---------------------------------------------------------------------------
+# 国家模板（客户侧 / 法国 / 2026-11 版 = 95 列）列位速查
+#   依据：reports/downloads/CPP202611040058~61.xlsx（本链路真实下载文件）
+#   A 指标中文说明   B 结算单ID   C 薪酬周期   D 国家   E 员工名称   F 员工编号
+#   G 员工工号       H 员工性质   I 客户       J 雇佣实体  K 入职时间   L 离职时间
+#   M 发薪币种（系统填）
+#   N..R 发薪/出勤/年假/病假/其他假期天数（输入）
+#   S 标准薪资   T 餐费津贴   U 通讯津贴   V 交通津贴   W 其他津贴   X 报销
+#   Y 加班费     Z 奖金       AA..AG 假期奖金/特殊津贴/年假津贴/年假折现/代通知金/离职补偿/其他结算
+#   AH..AJ 缺勤扣款/无薪假扣款/其他扣款（输入）
+#   AK 税前总收入(公式)  AL/AM 免税收入①②  AN 应税收入(公式)
+#   AO 个税      AP 其他扣款调差   AQ..AZ 法国雇员社保 10 项
+#   BA 雇员扣款合计(公式)   BB 雇员实发(公式)
+#   BC..BU 法国雇主社保 19 项（输入，默认 0）
+#   BV 雇主福利合计(公式)   BW 雇主总成本·发薪币(公式)
+#   BZ 结算币种(系统填)     CA 开票币种(系统填)
+#   CB 结算币÷发薪币 汇率（输入，系统留空，不填 CD/CN 会除零）
+#   CC 开票币÷结算币 汇率（输入）
+#   CD..CP GSR服务费/客户应付/开票金额（全公式，一律不填）
+#   第 8 行 = 本月预收汇总(SUM 公式)，第 9、10 行 = 第 1、2 名员工（行序稳定）
+#
+# 本用例只填 4 类格子：标准薪资 S、餐费津贴 T、两个汇率 CB/CC（每名员工一行）。
+# 其余金额列保持系统预填的 0；汇总行与合计列都是公式，框架 edit_excel 走
+# WPS/Excel 引擎（edit_excel_by_wps）会重算后再保存，不用手工算汇总。
+# 实测（把上一版污染的格子清零后模拟新模板）：S9=10000/T9=500 → 税前总收入 10500、
+# 雇主总成本 10500；S10=15000/T10=500 → 15500；汇总开票金额 26000，无公式错误。
+# ⚠ 模板换版本（56→95 已变过一次）先按上表核对列位，再改坐标。
+# ---------------------------------------------------------------------------
+#
+# 执行前置：01 必须先跑（02/03/04 依赖它的 settlement_package_code）；05 独立成链。
+# ============================================================================
+
+test_cases:
+
+# ============================================================================
+# 01 建包 + 2 名员工结算单 + 提交至待上传及处理
+# ============================================================================
+- id: 收款包-01-建包提交
+  page: gsr_admin_page
+  name: EOR薪资收款包｜建包+2名员工结算单｜提交至待上传及处理
+  steps:
+  - step_name: 1、点击结算管理（新）主菜单
+    element: ettlement_list
+    action: click
+    data: null
+  - step_name: 2、点击收款结算子菜单
+    element: payment_settlement
+    action: click
+    data: null
+  - step_name: 3、点击EOR类收款
+    element: eor_settlement
+    action: click
+    data: null
+  - step_name: 4、点击创建薪资包
+    element: create_salary_package
+    action: click
+    data: null
+  - step_name: 5、客户栏输入{customer}
+    element: client_input
+    action: input
+    data: '{customer}'
+  - step_name: 6、回车确认客户
+    element: null
+    action: enter
+    data: null
+  - step_name: 7、校验客户栏已选中{customer}
+    element: client_text
+    action: check_text
+    data: '{customer}'
+  - step_name: 8、客户合同栏输入payroll
+    element: client_contract_input
+    action: input
+    data: 'payroll'
+  - step_name: 9、回车确认客户合同
+    element: null
+    action: enter
+    data: null
+  - step_name: 10、校验客户合同栏已选中payroll
+    element: client_contract_text
+    action: check_text
+    data: 'payroll'
+  - step_name: 11、国家/地区栏输入France
+    element: country_input
+    action: input
+    data: 'France'
+  - step_name: 12、回车确认国家/地区
+    element: null
+    action: enter
+    data: null
+  - step_name: 13、校验国家/地区栏已选中France
+    element: country_text
+    action: check_text
+    data: 'France'
+  - step_name: 14、服务月份栏输入2026-08
+    element: service_month_input
+    action: input
+    data: '2026-08'
+  - step_name: 15、回车确认服务月份
+    element: null
+    action: enter
+    data: null
+  - step_name: 16、校验服务月份栏值为2026-08
+    element: service_month_input
+    action: check_value
+    data: '2026-08'
+  - step_name: 17、就职国家栏输入France
+    element: onboarding_country_input
+    action: input
+    data: 'France'
+  - step_name: 18、回车确认就职国家
+    element: null
+    action: enter
+    data: null
+  - step_name: 19、校验就职国家栏已选中France
+    element: onboarding_country_text
+    action: check_text
+    data: 'France'
+  - step_name: 20、员工性质栏输入顾问
+    element: consultan_flag
+    action: input
+    data: '顾问'
+  - step_name: 21、回车确认员工性质
+    element: null
+    action: enter
+    data: null
+  - step_name: 22、校验员工性质栏已选中顾问
+    element: consultanflag_text
+    action: check_text
+    data: '顾问'
+  - step_name: 23、点击创建弹窗确认
+    element: confirm_button_createEOR
+    action: click
+    data: null
+  - step_name: 24、提取结算包code存入变量settlement_package_code
+    element: settlement_package_code
+    action: save_text
+    data: settlement_package_code
+  # country 在库里存的是 JSON 数组（["France"]），所以不断言它
+  - step_name: 26、点击创建员工结算单（第1人）
+    element: create_employee_settlement
+    action: click
+    data: null
+  - step_name: 27、员工姓名栏输入louie垃圾
+    element: employee_input
+    action: input
+    data: 'louie垃圾'
+  - step_name: 28、回车确认员工
+    element: null
+    action: enter
+    data: null
+  - step_name: 29、校验员工姓名栏已选中louie垃圾
+    element: employee_text
+    action: check_text
+    data: 'louie垃圾'
+  - step_name: 30、提取该员工staffid存入变量staff_id_first
+    element: staffid_value
+    action: save_value
+    data: staff_id_first
+  - step_name: 31、点击员工结算单确认
+    element: confirm_employee_settlement
+    action: click
+    data: null
+  - step_name: 32、点击创建员工结算单（第2人）
+    element: create_employee_settlement
+    action: click
+    data: null
+  - step_name: 33、员工姓名栏输入louienewbee
+    element: employee_input
+    action: input
+    data: 'louienewbee'
+  - step_name: 34、回车确认员工
+    element: null
+    action: enter
+    data: null
+  - step_name: 35、校验员工姓名栏已选中louienewbee
+    element: employee_text
+    action: check_text
+    data: 'louienewbee'
+  - step_name: 36、提取该员工staffid存入变量staff_id_sec
+    element: staffid_value
+    action: save_value
+    data: staff_id_sec
+  - step_name: 37、点击员工结算单确认
+    element: confirm_employee_settlement
+    action: click
+    data: null
+  - step_name: 39、勾选无差异预收款
+    element: no_differential_advance_payment
+    action: click
+    data: null
+  - step_name: 40、是否合并开票选择是
+    element: merge_invoicing_yes
+    action: click
+    data: null
+  - step_name: 41、点击确认流转至待上传及处理
+    element: confirm_to_upload
+    action: click
+    data: null
+  - step_name: 42a、等待2秒让数据落库
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 42、SQL校验流转到待上传及处理tab
+    element: null
+    action: sql
+    data: "select pk.settlement_client_package_tag, pk.consultant_flag, (select count(*) from gsr_settlement_client sc where sc.settlement_client_package_id = pk.settlement_client_package_id and sc.del_flag = '0') as staff_cnt from gsr_settlement_client_package pk where pk.settlement_package_code = '{settlement_package_code}' and pk.del_flag = '0'"
+    expected: 'settlement_client_package_tag=2,consultant_flag=0,staff_cnt=2'
+
+
+# ============================================================================
+# 02 待上传及处理：下载国家模板 → 填金额 → 上传解析
+# ============================================================================
+- id: 收款包-02-上传国家模板
+  page: gsr_admin_page
+  name: EOR薪资收款包｜下载并填写国家模板｜上传解析成功2条
+  steps:
+  - step_name: 1、点击结算管理（新）主菜单
+    element: ettlement_list
+    action: click
+    data: null
+  - step_name: 2、点击收款结算子菜单
+    element: payment_settlement
+    action: click
+    data: null
+  - step_name: 3、点击EOR类收款
+    element: eor_settlement
+    action: click
+    data: null
+  - step_name: 4、切换至待上传及处理tab
+    element: upload_tab
+    action: click
+    data: null
+  - step_name: 5、结算包id搜索框输入{settlement_package_code}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code}'
+  - step_name: 6、点击搜索
+    element: search_button
+    action: click
+    data: null
+  - step_name: 7、核对列表返回结算包id为{settlement_package_code}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code}'
+  - step_name: 8、下载本结算包的国家模板
+    element: national_template_download
+    action: download
+    data: '{settlement_package_code}.xlsx'
+  # 只填输入格：员工1 标准薪资/餐费津贴、员工2 标准薪资/餐费津贴、两人的两个汇率
+  # 汇总第 8 行、合计列 CD..CP 都是公式，交给 WPS 引擎重算
+  - step_name: 9、填写国家模板：员工1薪资10000餐补500、员工2薪资15000餐补500、汇率1
+    element: null
+    action: edit_excel
+    data: '{settlement_package_code}.xlsx'
+    expected: '{
+      "S9": "10000.00", "T9": "500.00", "CB9": "1", "CC9": "1",
+      "S10": "15000.00", "T10": "500.00", "CB10": "1", "CC10": "1"
+    }'
+  - step_name: 10、点击上传国家模板按钮
+    element: national_template_upload_button
+    action: click
+    data: null
+  - step_name: 11、上传填写后的国家模板
+    element: hidden_national_template_upload_input
+    action: upload
+    data: '{settlement_package_code}.xlsx'
+  - step_name: 12、点击上传弹窗确认
+    element: confirm_national_template_upload
+    action: click
+    data: null
+  - step_name: 13、等待上传解析完成（excel组件出现）
+    element: luckly_sheet
+    action: wait_exists
+    data: null
+  - step_name: 14、校验上传解析成功2条
+    element: upload_result_success
+    action: check_text
+    data: '成功2条'
+  - step_name: 15、点击上传结果弹窗确认
+    element: confirm_upload_result
+    action: click
+    data: null
+  - step_name: 16、等待列表回到暂无数据（包已提交至下一环节）
+    element: description_upload
+    action: wait_exists
+    data: null
+  # 顺带断言“金额已回填”：total_local_employer_cost 为空说明模板没解析出金额
+  - step_name: 17a、等待2秒让数据落库
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 17、SQL校验包流转到待财务审核且金额已回填
+    element: null
+    action: sql
+    data: "select settlement_client_package_tag, upload_file_status from gsr_settlement_client_package where settlement_package_code = '{settlement_package_code}' and del_flag = '0' and total_local_employer_cost is not null"
+    expected: 'settlement_client_package_tag=4,upload_file_status=0'
+
+
+# ============================================================================
+# 03 待财务审核：审核 excel 通过 + 审核意见
+# ============================================================================
+- id: 收款包-03-财务审核
+  page: gsr_admin_page
+  name: EOR薪资收款包｜财务审核excel通过+审核意见｜推进至已审核
+  steps:
+  - step_name: 1、点击结算管理（新）主菜单
+    element: ettlement_list
+    action: click
+    data: null
+  - step_name: 2、点击收款结算子菜单
+    element: payment_settlement
+    action: click
+    data: null
+  - step_name: 3、点击EOR类收款
+    element: eor_settlement
+    action: click
+    data: null
+  - step_name: 4、切换至待财务审核tab
+    element: review_financial_tab
+    action: click
+    data: null
+  - step_name: 5、结算包id搜索框输入{settlement_package_code}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code}'
+  - step_name: 6、点击搜索
+    element: search_button
+    action: click
+    data: null
+  - step_name: 7、核对列表返回结算包id为{settlement_package_code}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code}'
+  - step_name: 8、点击待财务审核列表的审核按钮
+    element: review_financial_list
+    action: click
+    data: null
+  - step_name: 9、等待审核excel组件出现
+    element: luckly_sheet
+    action: wait_exists
+    data: null
+  - step_name: 10、点击excel底部通过按钮
+    element: confirm_financial_excel
+    action: click
+    data: null
+  # 弹窗里「继续审批下一张」默认是勾选状态，点一次 = 取消勾选，只审这一张
+  - step_name: 11、取消勾选继续审批下一张
+    element: confirm_next_continue
+    action: click
+    data: null
+  - step_name: 12、审核意见输入自动化测试{replace_num}
+    element: review_comments
+    action: input
+    data: '自动化测试{replace_num}'
+  - step_name: 13、点击审核意见弹窗通过
+    element: confirm_review_comments
+    action: click
+    data: null
+  - step_name: 14、等待列表回到暂无数据（审核完成）
+    element: description_upload
+    action: wait_exists
+    data: null
+  # state 在库里出现过字典外的 15，不稳定，只断言 tag
+  - step_name: 15a、等待2秒让数据落库
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 15、SQL校验包已审核终态
+    element: null
+    action: sql
+    data: "select settlement_client_package_tag from gsr_settlement_client_package where settlement_package_code = '{settlement_package_code}' and del_flag = '0'"
+    expected: 'settlement_client_package_tag=5'
+
+
+# ============================================================================
+# 04 已审核：按结算包 id 查询
+# ============================================================================
+- id: 收款包-04-已审核查询
+  page: gsr_admin_page
+  name: EOR薪资收款包｜已审核tab查询｜结算包id可检索
+  steps:
+  - step_name: 1、点击结算管理（新）主菜单
+    element: ettlement_list
+    action: click
+    data: null
+  - step_name: 2、点击收款结算子菜单
+    element: payment_settlement
+    action: click
+    data: null
+  - step_name: 3、点击EOR类收款
+    element: eor_settlement
+    action: click
+    data: null
+  - step_name: 4、切换至已审核tab
+    element: reviewed_tab
+    action: click
+    data: null
+  - step_name: 5、结算包id搜索框输入{settlement_package_code}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code}'
+  - step_name: 6、点击搜索
+    element: search_button
+    action: click
+    data: null
+  - step_name: 7、核对已审核列表返回结算包id为{settlement_package_code}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code}'
+
+
+# ============================================================================
+# 05 非顾问包全链路（1 名员工：louie测试-本地雇员）
+# ============================================================================
+- id: 收款包-05-非顾问包全链路
+  page: gsr_admin_page
+  name: EOR薪资收款包｜非顾问包｜建包→上传→审核→已审核
+  steps:
+  - step_name: 1、点击结算管理（新）主菜单
+    element: ettlement_list
+    action: click
+    data: null
+  - step_name: 2、点击收款结算子菜单
+    element: payment_settlement
+    action: click
+    data: null
+  - step_name: 3、点击EOR类收款
+    element: eor_settlement
+    action: click
+    data: null
+  - step_name: 4、点击创建薪资包
+    element: create_salary_package
+    action: click
+    data: null
+  - step_name: 5、客户栏输入{customer}
+    element: client_input
+    action: input
+    data: '{customer}'
+  - step_name: 6、回车确认客户
+    element: null
+    action: enter
+    data: null
+  - step_name: 7、校验客户栏已选中{customer}
+    element: client_text
+    action: check_text
+    data: '{customer}'
+  - step_name: 8、客户合同栏输入payroll
+    element: client_contract_input
+    action: input
+    data: 'payroll'
+  - step_name: 9、回车确认客户合同
+    element: null
+    action: enter
+    data: null
+  - step_name: 10、校验客户合同栏已选中payroll
+    element: client_contract_text
+    action: check_text
+    data: 'payroll'
+  - step_name: 11、国家/地区栏输入France
+    element: country_input
+    action: input
+    data: 'France'
+  - step_name: 12、回车确认国家/地区
+    element: null
+    action: enter
+    data: null
+  - step_name: 13、校验国家/地区栏已选中France
+    element: country_text
+    action: check_text
+    data: 'France'
+  - step_name: 14、服务月份栏输入2026-08
+    element: service_month_input
+    action: input
+    data: '2026-08'
+  - step_name: 15、回车确认服务月份
+    element: null
+    action: enter
+    data: null
+  - step_name: 16、校验服务月份栏值为2026-08
+    element: service_month_input
+    action: check_value
+    data: '2026-08'
+  - step_name: 17、就职国家栏输入France
+    element: onboarding_country_input
+    action: input
+    data: 'France'
+  - step_name: 18、回车确认就职国家
+    element: null
+    action: enter
+    data: null
+  - step_name: 19、校验就职国家栏已选中France
+    element: onboarding_country_text
+    action: check_text
+    data: 'France'
+  - step_name: 20、员工性质栏输入非顾问
+    element: consultan_flag
+    action: input
+    data: '非顾问'
+  - step_name: 21、回车确认员工性质
+    element: null
+    action: enter
+    data: null
+  - step_name: 22、校验员工性质栏已选中非顾问
+    element: consultanflag_text
+    action: check_text
+    data: '非顾问'
+  - step_name: 23、点击创建弹窗确认
+    element: confirm_button_createEOR
+    action: click
+    data: null
+  - step_name: 24、提取结算包code存入变量settlement_package_code_nc
+    element: settlement_package_code
+    action: save_text
+    data: settlement_package_code_nc
+  - step_name: 26、点击创建员工结算单
+    element: create_employee_settlement
+    action: click
+    data: null
+  - step_name: 27、员工姓名栏输入louie测试-本地雇员
+    element: employee_input
+    action: input
+    data: 'louie测试-本地雇员'
+  - step_name: 28、回车确认员工
+    element: null
+    action: enter
+    data: null
+  - step_name: 29、校验员工姓名栏已选中louie测试-本地雇员
+    element: employee_text
+    action: check_text
+    data: 'louie测试-本地雇员'
+  - step_name: 30、提取该员工staffid存入变量staff_id_nc
+    element: staffid_value
+    action: save_value
+    data: staff_id_nc
+  - step_name: 31、点击员工结算单确认
+    element: confirm_employee_settlement
+    action: click
+    data: null
+  - step_name: 33、勾选无差异预收款
+    element: no_differential_advance_payment
+    action: click
+    data: null
+  - step_name: 34、是否合并开票选择是
+    element: merge_invoicing_yes
+    action: click
+    data: null
+  - step_name: 35、点击确认流转至待上传及处理
+    element: confirm_to_upload
+    action: click
+    data: null
+  - step_name: 36、切换至待上传及处理tab
+    element: upload_tab
+    action: click
+    data: null
+  - step_name: 37、结算包id搜索框输入{settlement_package_code_nc}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code_nc}'
+  - step_name: 38、点击搜索
+    element: search_button
+    action: click
+    data: null
+  - step_name: 39、核对列表返回结算包id为{settlement_package_code_nc}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code_nc}'
+  - step_name: 40、下载本结算包的国家模板
+    element: national_template_download
+    action: download
+    data: '{settlement_package_code_nc}.xlsx'
+  # 只有 1 名员工，只填第 9 行
+  - step_name: 41、填写国家模板：员工1薪资8000餐补300、汇率1
+    element: null
+    action: edit_excel
+    data: '{settlement_package_code_nc}.xlsx'
+    expected: '{
+      "S9": "8000.00", "T9": "300.00", "CB9": "1", "CC9": "1"
+    }'
+  - step_name: 42、点击上传国家模板按钮
+    element: national_template_upload_button
+    action: click
+    data: null
+  - step_name: 43、上传填写后的国家模板
+    element: hidden_national_template_upload_input
+    action: upload
+    data: '{settlement_package_code_nc}.xlsx'
+  - step_name: 44、点击上传弹窗确认
+    element: confirm_national_template_upload
+    action: click
+    data: null
+  - step_name: 45、等待上传解析完成（excel组件出现）
+    element: luckly_sheet
+    action: wait_exists
+    data: null
+  - step_name: 46、校验上传解析成功1条
+    element: upload_result_success
+    action: check_text
+    data: '成功1条'
+  - step_name: 47、点击上传结果弹窗确认
+    element: confirm_upload_result
+    action: click
+    data: null
+  - step_name: 48、等待列表回到暂无数据（包已提交至下一环节）
+    element: description_upload
+    action: wait_exists
+    data: null
+  - step_name: 49、切换至待财务审核tab
+    element: review_financial_tab
+    action: click
+    data: null
+  - step_name: 50、结算包id搜索框输入{settlement_package_code_nc}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code_nc}'
+  - step_name: 51、点击搜索
+    element: search_button
+    action: click
+    data: null
+  - step_name: 52、核对列表返回结算包id为{settlement_package_code_nc}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code_nc}'
+  - step_name: 53、点击待财务审核列表的审核按钮
+    element: review_financial_list
+    action: click
+    data: null
+  - step_name: 54、等待审核excel组件出现
+    element: luckly_sheet
+    action: wait_exists
+    data: null
+  - step_name: 55、点击excel底部通过按钮
+    element: confirm_financial_excel
+    action: click
+    data: null
+  - step_name: 56、取消勾选继续审批下一张
+    element: confirm_next_continue
+    action: click
+    data: null
+  - step_name: 57、审核意见输入自动化测试{replace_num}
+    element: review_comments
+    action: input
+    data: '自动化测试{replace_num}'
+  - step_name: 58、点击审核意见弹窗通过
+    element: confirm_review_comments
+    action: click
+    data: null
+  - step_name: 59、等待列表回到暂无数据（审核完成）
+    element: description_upload
+    action: wait_exists
+    data: null
+  - step_name: 60、切换至已审核tab
+    element: reviewed_tab
+    action: click
+    data: null
+  - step_name: 61、结算包id搜索框输入{settlement_package_code_nc}
+    element: settlement_package_code_search
+    action: input
+    data: '{settlement_package_code_nc}'
+  - step_name: 62、点击搜索
+    element: search_button
+    action: click
+    data: null
+  - step_name: 63、核对已审核列表返回结算包id为{settlement_package_code_nc}
+    element: settlement_package_code_list
+    action: check_text
+    data: '{settlement_package_code_nc}'
+  - step_name: 64a、等待2秒让数据落库
+    element: null
+    action: wait
+    data: '2'
+  - step_name: 64、SQL校验非顾问包已审核终态
+    element: null
+    action: sql
+    data: "select pk.settlement_client_package_tag, pk.consultant_flag, (select count(*) from gsr_settlement_client sc where sc.settlement_client_package_id = pk.settlement_client_package_id and sc.del_flag = '0') as staff_cnt from gsr_settlement_client_package pk where pk.settlement_package_code = '{settlement_package_code_nc}' and pk.del_flag = '0'"
+    expected: 'settlement_client_package_tag=5,consultant_flag=2,staff_cnt=1'
+
+  # ==========================================================================
+  # 待业务审核（tag=3）——数据库实测：2026-07/08 之后客户包没再出现 tag=3，
+  # 当前链路是 待上传及处理 → 待财务审核 直达，故默认关闭。
+  # 若某天配置变更需要人工业务审核，把 # 去掉并插到第 48 步之后。
+  # --------------------------------------------------------------------------
+  # - step_name: 48a、切换至待业务审核tab
+  #   element: review_business_tab
+  #   action: click
+  #   data: null
+  # - step_name: 48b、结算包id搜索框输入{settlement_package_code_nc}
+  #   element: settlement_package_code_search
+  #   action: input
+  #   data: '{settlement_package_code_nc}'
+  # - step_name: 48c、点击搜索
+  #   element: search_button
+  #   action: click
+  #   data: null
+  # - step_name: 48d、核对列表返回结算包id
+  #   element: settlement_package_code_list
+  #   action: check_text
+  #   data: '{settlement_package_code_nc}'
+  # - step_name: 48e、点击业务审核操作按钮
+  #   element: review_financial_list
+  #   action: click
+  #   data: null
+  # - step_name: 48f、等待业务审核excel组件出现
+  #   element: luckly_sheet
+  #   action: wait_exists
+  #   data: null
+  # - step_name: 48g、点击excel底部通过按钮
+  #   element: confirm_financial_excel
+  #   action: click
+  #   data: null
+  # - step_name: 48h、取消勾选继续审批下一张
+  #   element: confirm_next_continue
+  #   action: click
+  #   data: null
+  # - step_name: 48i、业务审核意见输入自动化测试{replace_num}
+  #   element: review_comments
+  #   action: input
+  #   data: '自动化测试{replace_num}'
+  # - step_name: 48j、点击业务审核弹窗通过
+  #   element: confirm_review_comments
+  #   action: click
+  #   data: null
+  # - step_name: 48k、等待列表回到暂无数据（业务审核完成）
+  #   element: description_upload
+  #   action: wait_exists
+  #   data: null
+  # ==========================================================================

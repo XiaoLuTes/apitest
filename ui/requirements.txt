@@ -1,0 +1,14 @@
+pytest>=8.0.0
+playwright>=1.42
+allure-pytest>=2.13.2
+loguru>=0.7.0
+pyyaml>=6.0
+allure-python-commons~=2.13.5
+PyAutoGUI~=0.9.54
+PyMySQL~=1.1.2
+requests~=2.32.4
+Pillow>=10.0.0
+numpy>=1.26.0,<2.0.0
+ddddocr>=1.4.7
+python-dotenv>=1.0.0
+openpyxl>=3.1

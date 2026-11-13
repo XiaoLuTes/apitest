@@ -1,0 +1,162 @@
+gsr_admin_page:
+  username_input:   # 姓名输入框
+    by: "id"
+    value: "username"
+  password_input:   # 密码输入框
+    by: "id"
+    value: "password"
+  code_input:   # 验证码输入框
+    by: "id"
+    value: "code"
+  login_button:   # 登录按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div[2]/form/button"
+  user_part: # 用户中心（右上角）
+    by: "xpath"
+    value:  "//div[@id='root']/div/div/div[2]/header[2]/div/div[3]/div/div/div/div[@class='ant-space-item'][2]"
+  talent_button:    # 招聘平台按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div/ul/li[2]"
+  jobManagement: # 岗位管理按钮
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/aside/div/div[1]/ul/li[3]/span"
+  position_new: # 创建的新岗位
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]/div/div[2]/div/div/div/div/div/table/tbody/tr[2]/td[2]/div"
+  candidate_1: # 第一位候选人
+    by: "xpath"
+    value: "//tbody[@class= 'ant-table-tbody']/tr[2]"
+  choose_1:  # 勾选列表第一个
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div/div[2]/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/table/tbody/tr[2]/td[1]/label/span"
+  next_round_first: # 初筛页-下一环节按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div/div/div/div[1]/button"
+  match:  # 匹配页
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[2]/div"
+  next_round_match: # 匹配页-下一环节按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[2]/div/div/div[2]/button"
+  choose_all_match: # 匹配页全选按钮
+    by: "xpath"
+    value:  "/html/body/div/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div[2]/div/div/div/div/div/div/div/div/div/div/div/div/div/table/thead/tr/th[1]/div/label/span"
+  interview:  # 内部面试页
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[3]/div"
+  next_round_interview: # 内部面试页-下一环节按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[3]/div/div/div[2]/button"
+  choose_all_interview: # 内部面试页-全选按钮
+    by: "xpath"
+    value:  "/html/body/div/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[3]/div[2]/div[2]/div/form/div/div/div/div/div/div/div/div/div/div/div/div/table/thead/tr/th[1]/div/label/span"
+  recommend:  # 推荐页
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[4]/div"
+  next_round_recommend: # 推荐页-下一环节按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[4]/div/div/div[2]/button"
+  choose_all_recommend: # 推荐页-全选按钮
+    by: "xpath"
+    value:  "/html/body/div/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[4]/div[2]/div[2]/div/div[1]/div/div/div/div/div/div/div/div/table/thead/tr/th[1]/div/label/span"
+  three_interview:  # 三方面试页
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[5]/div"
+  next_round_three: # 三方面试页-下一环节按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[5]/div/div/div[2]/button"
+  choose_all_three: # 三方面试页-全选按钮
+    by: "xpath"
+    value:  "/html/body/div[1]/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[5]/div[2]/div[2]/div/form/div/div/div/div/div/div/div/div/div/div/div/div/table/thead/tr/th[1]/div/label/span"
+  three_enter: # 三方面试页-弹窗确认按钮
+    by: "xpath"
+    value:  "/html/body/div[2]/div/div[2]/div/div[1]/div/div/div/div[2]/button[2]"
+  offer_info_enter: # offer时间录入弹窗确认按钮
+    by: "xpath"
+    value:  "/html/body/div[2]/div/div[2]/div/div[1]/div/div[3]/button[2]"
+  allow_offer:  # 可发offer人选页
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[6]/div"
+  allow_offer_1:  # 可发offer人选页-第一候选人
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[2]/div[2]/div[2]/div/form/div/div/div/div/div/div/div/div/div/div/div/div/table/tbody/tr[2]/td/label/span"
+  allow_offer_enter:  # 可发offer人选页-批量发起子流程
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div[2]/div/div/div[3]/button"
+  preparation:  # 编制管理
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/aside/div/div[1]/ul/li[4]/span"
+  preparation_view_1: # 编制管理第一条数据
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]/div/div/div/div/div/div/div/table/tbody/tr[2]/td[8]/button"
+  send_offer: # 发送offer
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div/div/div/label[1]/span[1]"
+  identity_judge:  # 判断身份
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div/div/div/label[2]/span[1]"
+  email_input:  # email输入栏
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[7]/div/div/div[2]/div/div/input"
+  submit: # 提交按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[3]/button"
+  country_identity_judge: # 判断身份页-申请人国籍
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[3]/div/div/div[2]/div/div/div/div/span/span[1]/input"
+  country_visa: # 判断身份页-办签国家
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[5]/div/div/div[2]/div/div/div/div/span/span[1]/input"
+  card_visa:  # 居留卡/visa上传
+    by: "xpath"
+    value:  "//*[@id='card']/span/div/span/input"
+  offer_date: # offer日期
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[1]/div/div/div[2]/div/div/div/div/input"
+  entry_date: # 入职日期
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div[2]/div/div/div/div/input"
+  probation_not:  # 保证期-否
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[4]/div/div/div[2]/div/div/div/label[2]/span[1]"
+  hidden_offer_upload: # offer上传
+    by: "xpath"
+    value:  "//*[@id='uploadFiles']/span/div/span/input"
+  annual_salary:  # 薪资输入栏
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[3]/div/div/div/div/div/div/div/div[2]/div/div/div[3]/div/div/div[2]/div[1]/div/div/div[2]/input"
+  salary_currency:  # 薪资货币
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[3]/div/div/div/div/div/div/div/div[2]/div/div/div[4]/div/div/div[2]/div/div/div/div/span/span[1]/input"
+  instance_status:  # 流程实例状态
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]/div/div/div/div/div/div/div/table/tbody/tr[2]/td[4]"
+  invoice:  # 开票按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/button[1]"
+  exchange_rate:  # 修改汇率
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/button[2]"
+  hidden_invoice_redemption: # 发票赎期天数
+    by: "xpath"
+    value:  "/html/body/div[2]/div/div[2]/div/div[1]/div/div[2]/form/div/div[12]/div[1]/div[2]/div/div/div[2]/div/div/div/div/span"
+  hidden_invoice_days:  # 发票天数
+    by: "xpath"
+    value:  "//*[@id='invoiceRedemptionDays']"
+  hidden_settlement_currency:  # 发票结算币种
+    by: "xpath"
+    value:  "//*[@id='settlementCurrency']"
+  invoice_submit: # 提交开票
+    by: "xpath"
+    value:  "/html/body/div[2]/div/div[2]/div/div[1]/div/div[2]/form/div/div[14]/div/div[2]/button[2]"
+  end_invoice_submit:  # 第一次开票结束页-提交
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div/button[./span='Submit']"
+  after_onboarding: # 入职回访页、保证期-提交
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[2]/button"
+  after_onboarding_2: # 过保回访-提交
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[2]/button"
+
+

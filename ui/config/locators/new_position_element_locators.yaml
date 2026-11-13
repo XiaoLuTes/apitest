@@ -1,0 +1,223 @@
+pt_new_position:
+  username_input:   # 姓名输入框
+    by: "id"
+    value: "username"
+  password_input:   # 密码输入框
+    by: "id"
+    value: "password"
+  code_input:   # 验证码输入框
+    by: "id"
+    value: "code"
+  login_button:   # 登录按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div[2]/form/button"
+  talent_button:    # 招聘平台按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div/ul/li[2]"
+  user_part: # 用户中心（右上角）
+    by: "xpath"
+    value: "//div[@id='root']/div/div/div[2]/header[2]/div/div[3]/div/div/div/div[@class='ant-space-item'][2]"
+  admin_button:   # 管理端按钮
+    by: "xpath"
+    value: "//*[@id='root-master']/div/div/div/div/ul/li[1]/div[1]"
+  jobManagement:    # 岗位管理按钮
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/aside/div/div[1]/ul/li[3]/span"
+  job_list:     # 岗位列表
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]"
+  new_job:    # 新建岗位
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]/div/div[1]/div/div[2]/div/button"
+  customer_type_new:    # 岗位类型-新建
+    by: "xpath"
+    value:  "//*[@id='fr-77z_customerType']/label[1]"
+  customer_type_old:    # 岗位类型-继承
+    by: "xpath"
+    value:  "//*[@id='fr-77z_customerType']/label[2]"
+  contract_type: # 合同类型选项栏
+    by: "xpath"
+    value:    "//*[@id='fr-77z_contractType']"
+  contract_type_check:    # 合同类型选项栏校验用
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[5]/div/div/div[2]/div/div/div/div/span"
+  company_name: # 公司名称
+    by: "xpath"
+    value:  "//*[@id='fr-77z_nameofClient']"
+  company_name_check:   # 校验公司名称用
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div[2]/div/div/div/div/span"
+  requirement_type_1:   # 需求类型1、headhunter
+    by: "xpath"
+    value: "//*[@id='fr-77z_recruitmentType']/label[1]"
+  requirement_type_2: # 需求类型2、RPO
+    by: "xpath"
+    value: "//*[@id='fr-77z_recruitmentType']/label[2]"
+  recruitment_volume:   # 需求人数
+    by: "xpath"
+    value: "//*[@id='fr-77z_recruidNum']"
+  eor_not:    # 非eor入职
+    by: "xpath"
+    value:  "//*[@id='fr-77z_eoryn']/label[2]"
+  eor_yes:    # eor入职
+    by: "xpath"
+    value:  "//*[@id='fr-77z_eoryn']/label[1]"
+  project_manager:    # 项目负责人
+    by: "xpath"
+    value:  "//*[@id='fr-77z_participantId']"
+  project_manager_check:    # 项目负责人校验用
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[8]/div/div/div[2]/div/div/div/div/span"
+  jd_upload:    # 点击上传jd按钮
+    by: "xpath"
+    value:  "//*[@id='jdAttachment']"
+  hidden_fr_upload_jd:   # 文件上传地址
+    by: "xpath"
+    value:  "//*[@id='jdAttachment']/span/div/span/input"
+  fr_upload_list:   # 文件上传列表
+    by: "xpath"
+    value:  "//*[@id='jdAttachment']/span/div/span/div/div[3]/div"
+  if_ai_yes:  # 是否启用ai搜索-是
+    by: "xpath"
+    value: "//*[@id='fr-ees_if_AI']/label[1]/span[1]"
+  if_ai_no: # 是否启用ai搜索-否
+    by: "xpath"
+    value: "//*[@id='fr-ees_if_AI']/label[2]/span[1]"
+  ai_instruction:   # AI描述栏
+    by: "xpath"
+    value:  "//*[@id='fr-ees_aiInstruction']"
+  job_title:    # 岗位标题栏
+    by: "xpath"
+    value:  "//*[@id='fr-ees_jobTitle']"
+  country_click_for_noai:
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[5]/div/div/div[2]/div[1]/div/div/div/span"
+  country_check_for_noai:
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[5]/div/div/div[2]/div[1]/div/div/div/span/div/div[1]/span"
+  country_click:    # 国家/地区选项栏，点击使输入栏可见
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[5]/div/div/div[2]/div[1]/div/div/div/span/div"
+  country:    # 国家/地区选项栏
+    by: "xpath"
+    value:  "//*[@id='fr-ees_country']"
+  country_check:    # 国家/地区选项栏,校验用
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[2]/div/div/div/div/div/div/div/div[2]/div/div/div[5]/div/div/div[2]/div[1]/div/div/div/span/div/div[1]/span"
+  country_city:   # 国家/地区输入栏
+    by: "xpath"
+    value:  "//*[@id='fr-ees_countryOrRegion']"
+  start:    # 开始键
+    by: "xpath"
+    value:  "/html/body/div[1]/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[3]/button"
+  hidden_project_possessor:  # 岗位确认页-项目负责人
+    by: "xpath"
+    value:  "//*[@id='fr-77z_possessorId']"
+  project_possessor_check: # 岗位确认页-项目负责人
+    by: "xpath"
+    value: "/html/body/div[1]/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/form/div/div[1]/div/div/div/div/div/div/div/div[2]/div/div/div[9]/div/div/div[2]/div/div/div/div/span/span[2]"
+  priority_A:   # 优先级A
+    by: "xpath"
+    value:  "//*[@id='fr-77z_companyPriority']/label[1]"
+  priority_B: # 优先级B
+    by: "xpath"
+    value:  "//*[@id='fr-77z_companyPriority']/label[2]"
+  priority_C: # 优先级C
+    by: "xpath"
+    value:  "//*[@id='fr-77z_companyPriority']/label[3]"
+  submit_confirm:   # 方案确认页-提交按钮
+    by: "xpath"
+    value:  "/html/body/div[1]/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[3]/button"
+  entry_contract: # 销售录入合同页
+    by: "xpath"
+    value:  "/html/body/div/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[2]/div/div/div[1]/div[2]/div/div[3]/div"
+  hidden_join_assistant: # 招聘专员加入助理页
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[2]/div/div/div[1]/div[2]/div/div[2]/div"
+  related_contract: # 关联合同
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[2]/div/div[2]/div/div/div/div/span"
+  related_contract_check: # 关联合同-检查输入用
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[2]/div/div[2]/div/div/div/div[1]/span/span[2]"
+  pricing_model:  # 收费模式
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[3]/div/div[2]/div/div/div/div/span"
+  pricing_model_check:  # 收费模式-检查输入用
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/form/div/div[1]/div[3]/div/div[2]/div/div/div/div[1]/span"
+  exchange_type_offer: # 汇率类型-offer时间
+    by: "xpath"
+    value:  "//*[@id='exchangeRateType']/label[1]"
+  exchange_type_entry: # 汇率类型-入职时间
+    by: "xpath"
+    value: "//*[@id='exchangeRateType']/label[2]"
+  submit_contract: # 销售录入合同页-提交按钮
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[3]/div[2]/div/div[2]/button"
+  taxrate_1: # 税率-6%
+    by: "xpath"
+    value:  "//*[@id='taxRate']/label[1]"
+  taxrate_2: # 税率-6.72%
+    by: "xpath"
+    value: "//*[@id='taxRate']/label[2]"
+  taxrate_3: # 税率-8%
+    by: "xpath"
+    value: "//*[@id='taxRate']/label[3]"
+  assistant_join_button:  # 招聘专员加入助理页-添加按钮
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div/div/div[1]/div/div[2]/div/button"
+  assistant_select: # 参与人选择框
+    by: "xpath"
+    value:  "/html/body/div[3]/div/div[2]/div/div[1]/div/div[2]/div/div/div[2]/div/div/div/div/span"
+  assistant_enter:  # 参与人选择框-确认按钮
+    by: "xpath"
+    value:  "/html/body/div[3]/div/div[2]/div/div[1]/div/div[3]/button[2]"
+  assistant_list: # 参与人列表
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div/div/div[2]/div/div/div/div/div/table/tbody/tr[2]"
+  local_library:  # 本地库
+    by: "xpath"
+    value:  "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[1]/div[1]/div/div[2]"
+  email_subject: # 岗位确认节点-邮箱标题
+    by: "xpath"
+    value: "//*[@id='fr-ees_emailSubject']"
+  email_template:
+    by: "xpath" # 岗位确认节点-邮件模板
+    value: "//*[@id='fr-ees_emailTemplate']"
+  position_new: # 创建的新岗位
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div/div[2]/div/div[2]/div/div/div/div/div/table/tbody/tr[2]/td[2]/div"
+  candidate_list: # 候选人列表
+    by: "xpath"
+    value:  "//tbody[@class='ant-table-tbody']/tr[2]"
+  choose_all: # 全选列表
+    by: "xpath"
+    value: "//*[@class='ant-table-selection']/label/span"
+  candidate_1: # 第一位候选人
+    by: "xpath"
+    value:  "//tbody[@class= 'ant-table-tbody']/tr[2]"
+  choose_1: # 勾选第一位候选人
+    by: "xpath"
+    value:  "//tbody[@class='ant-table-tbody']/tr[2]/td[1]/label/span"
+  next_round_first: # 初筛页-下一环节按钮
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div[2]/div/div/div/div/div[1]/button"
+  match: # 匹配页
+    by: "xpath"
+    value: "//*[@id='root']/div/div[2]/div[2]/main/div/div/div/div/div/div/div[2]/div/div[3]/div/div[2]/div/div/div/div/div/div/div[2]/div"
+  change_email: # 更改邮箱按钮
+    by: "xpath"
+    value:  "//tbody[@class='ant-table-tbody']/tr[2]/td[5]/div/button"
+  email_input:  # 输入邮箱栏
+    by: "xpath"
+    value:  "//input[@placeholder='请输入邮箱地址']"
+  email_save: # 保存邮箱
+    by: "xpath"
+    value: "//div[@class='ant-modal-footer']/button[2]"
+  send_email: # 发送邮件
+    by: "xpath"
+    value: "//div[@class='ant-tabs-content-holder']/div/div[2]/div[1]/div/div[4]/button"
+  sure_send:  # 确认发送邮件
+    by: "xpath"
+    value:  "//div[@class='ant-tabs-content-holder']/div/div[2]/div[1]/div/div[4]/button"
