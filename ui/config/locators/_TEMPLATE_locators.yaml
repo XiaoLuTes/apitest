@@ -1,0 +1,57 @@
+# ============================================================================
+# 元素定位器模板（复制到 ui/config/locators/<项目>.yaml 后修改）
+#   结构：<页面节点名（建议与 PAGE_NAME 一致）> → <元素名> → {by, value}
+#   by 支持：id / xpath / css / name
+#   采集方式：python tools/ui_capture.py --menu "Payroll/算薪/薪资包管理" --headless
+#             → reports/_probe/candidates_target.json（输入框/按钮/表头/首行单元格）
+#
+# 注意：
+#   1. 框架查找元素是「全局扫描本文件所有页面节点」，所以元素名必须**唯一**、
+#      且不要和别的定位器文件重名（同一项目只加载一份定位器文件）
+#   2. antd 按钮两个汉字会插空格（"搜 索"），用 contains 匹配更稳：
+#      value: "//button[contains(normalize-space(.),'搜')]"
+#   3. 优先用 id（#payrollSalaryPackageCode 这类）> 稳定的 name > 结构化 xpath
+#   4. 不要用 nth-child 这类易变层级；表格行用 ant-table-row + [1]/td[1] 更稳
+# ============================================================================
+
+模板页面节点:
+  # ---------- 输入框（by: id 最稳）----------
+  模板_输入框:
+    by: "id"
+    value: "payrollSalaryPackageCode"
+
+  # ---------- 下拉（antd 的 select，点击后再选选项）----------
+  模板_下拉框:
+    by: "id"
+    value: "payrollStatus"
+
+  # ---------- 按钮（两个汉字的按钮文案会插空格，用 contains）----------
+  模板_搜索按钮:
+    by: "xpath"
+    value: "//button[contains(normalize-space(.),'搜')]"
+
+  # ---------- 表格（容器 + 单元格）----------
+  模板_表格:
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table')]"
+  模板_首行第一列:
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[1]"
+  模板_空数据提示:
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table')]//div[contains(@class,'ant-empty-description')]"
+
+  # ---------- 按文本定位（菜单/标签页/弹窗标题）----------
+  模板_按文本:
+    by: "xpath"
+    value: "//*[normalize-space(text())='薪资包管理']"
+
+  # ---------- css 写法（仅当没有稳定 id 时）----------
+  模板_css:
+    by: "css"
+    value: ".ant-pagination-total-text"
+
+  # ---------- name 属性写法（表单类元素）----------
+  模板_name属性:
+    by: "name"
+    value: "files[]"

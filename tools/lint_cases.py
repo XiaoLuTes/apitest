@@ -741,7 +741,12 @@ def collect_targets(args):
             print(f"[lint] 文件不存在：{f}", file=sys.stderr)
             continue
         suite = "api" if full.lower().endswith((".xlsx", ".xlsm")) else "ui"
-        targets.append((suite, os.path.basename(full), full))
+        label = os.path.basename(full)
+        # 只指定一个 --project 时，用它作为该文件的定位器来源（否则 UI 模板/新用例会用默认项目
+        # 的定位器文件校验，误报元素不存在）
+        if suite == "ui" and len(args.project) == 1:
+            label = args.project[0]
+        targets.append((suite, label, full))
     if targets:
         return targets
 

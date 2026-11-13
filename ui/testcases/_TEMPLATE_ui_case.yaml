@@ -1,0 +1,120 @@
+# ============================================================================
+# UI 用例模板（复制到 ui/testcases/<项目>/<你的用例>.yaml 后修改）
+#   1. 先把本文件的 id / name / page / element 换成真实的
+#   2. 注册到 ui/config/settings.py 的 PROJECT_CONFIGS（PAGE_NAME / TESTCASES_PATH /
+#      ELEMENT_LOCATORS / LOADING_SELECTOR）
+#   3. 元素名必须在 ui/config/locators/<项目>.yaml 里存在（没有就 tools/ui_capture.py 采集）
+#   4. 自检：python run.py lint --file ui/testcases/<项目>/<你的用例>.yaml
+#
+# 结构说明：
+#   test_cases:           必须的根节点
+#   - id / name / page    必填；page 必须在本项目 PAGE_NAME 内
+#   steps:                必填，按顺序执行
+#     step_name           步骤名（报告的步骤名，写清楚在做什么）
+#     element             元素名（不引用元素的动作可留 null）
+#     action              动作，取值见文件底部清单
+#     data                输入值/期望值/变量名（按动作含义不同，见清单）
+#     expected            可选，仅 edit_excel 等动作用作配置 JSON
+#
+# 本模板用「薪资包管理」页面做示例，可直接跑通：
+#   python run.py lint --file ui/testcases/_TEMPLATE_ui_case.yaml
+# ============================================================================
+
+test_cases:
+
+- id: 模板-01-列表查询与字段校验
+  name: 模板-列表查询-命中并校验关键字段
+  page: payroll_package_page
+  steps:
+    - step_name: 1、在「薪资包ID」输入框输入已知数据
+      element: pkg_code_input
+      action: input
+      data: 'SAL-20261112-0001'
+
+    - step_name: 2、点击搜索
+      element: search_button
+      action: click
+
+    - step_name: 3、等待结果行出现（比固定 sleep 稳）
+      element: first_row_code
+      action: wait_exists
+
+    - step_name: 4、校验首行薪资包ID
+      element: first_row_code
+      action: check_text
+      data: 'SAL-20261112-0001'
+
+    - step_name: 5、校验状态
+      element: first_row_status
+      action: check_text
+      data: '待发起算薪'
+
+    - step_name: 6、校验分页统计（总数是业务断言，别只判断"有数据"）
+      element: pagination_total
+      action: check_text
+      data: '总共 1 条'
+
+    - step_name: 7、把状态文本存成变量，供后续步骤/用例引用
+      element: first_row_status
+      action: save_text
+      data: pkg_status_text
+
+- id: 模板-02-空数据与重置
+  name: 模板-搜索不存在的关键字-列表为空-重置后恢复
+  page: payroll_package_page
+  steps:
+    - step_name: 1、输入不存在的关键字
+      element: pkg_code_input
+      action: input
+      data: 'SAL-19990101-9999'
+
+    - step_name: 2、点击搜索
+      element: search_button
+      action: click
+
+    - step_name: 3、等待空数据提示
+      element: table_empty
+      action: wait_exists
+
+    - step_name: 4、校验提示文案
+      element: table_empty
+      action: check_text
+      data: '暂无数据'
+
+    - step_name: 5、点击重置
+      element: reset_button
+      action: click
+
+    - step_name: 6、等待列表恢复
+      element: first_row_code
+      action: wait_exists
+
+# ============================================================================
+# 动作清单（data / expected 的语义）
+# ----------------------------------------------------------------------------
+# input                  element 输入框      data 输入值（支持 {变量}）
+# click                  element 可点元素    -           点击
+# submit                 element 按钮        data 点击后等待的关键字/可留空
+# check_text             element 任意元素    data 期望包含的文本
+# check_value            element 输入框      data 期望的 value
+# check_exists           element 任意元素    data '存在' / '不存在'
+# wait_text              element 任意元素    data 期望出现并包含的文本
+# wait_value             element 输入框      data 期望的 value
+# wait_exists            element 任意元素    -           等元素出现
+# wait_exists_refresh    element 任意元素    -           刷新页面后再等元素出现
+# save_text              element 任意元素    data 变量名（字母/下划线开头）
+# save_value             element 输入框      data 变量名
+# enter                  -                  -           回车
+# down / up              -                  data 次数（默认 1）
+# wait                   -                  data 秒数（整数）
+# screenshot             -                  data 截图名
+# download               element 下载按钮    data 保存的文件名（可含 {变量}）
+# upload                 element 上传控件    data 本地文件路径
+# edit_excel             -                  data 文件路径；expected 填写配置 JSON
+#                        （支持按表头填：{"file": "...", "index_cells": {...}} 见 README 第 8 节）
+# sql / sql_update       -                  data SQL；断言/期望行数放 expected
+# ----------------------------------------------------------------------------
+# 变量：{变量名} 会被 VariableStore 替换；要输出字面量大括号写 {{变量名}}
+#       可用变量：preload 的 username/password/customer/owner/replace_num
+#                 + 前面 save_text/save_value/download 产出的变量
+# ============================================================================

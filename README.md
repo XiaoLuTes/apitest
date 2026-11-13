@@ -27,6 +27,8 @@ autotest/
 │   ├─ paths.py              统一路径（全部绝对化，任意工作目录可执行）
 │   ├─ env.py                统一 .env 加载（系统环境变量优先）
 │   └─ logger.py             日志工厂（API_/UI_ 前缀 → reports/logs）
+├─ docs/
+│   └─ 用例编写模板.md        列定义 / 动作表 / 命名规范 / 设计口径（模板用法说明）
 ├─ tools/
 │   ├─ lint_cases.py         用例静态检查（执行前的机器初审）
 │   ├─ selftest_lint.py      lint 自身的回归自测（17 类埋错，验证规则是否生效）
@@ -37,6 +39,7 @@ autotest/
 │   │   └─ payroll_package.py  薪资包管理查询方法（本次新增）
 │   ├─ config/setting.py     项目注册表 TEST_FLIELOADS + 路径/超时/DB 配置
 │   ├─ testcase/             用例 Excel（数据准备 / 测试执行 / 数据清理）
+│   │   └─ test_TEMPLATE_api.xlsx   接口用例模板（可整表复制，lint 干净）
 │   ├─ variable/             all.yaml（全局变量）+ extract.yaml（运行期临时变量，不入库）
 │   ├─ conftest.py           会话级夹具（结果文件、Allure、企微通知、DB 关闭）
 │   └─ test_file.py          Excel 用例入口
@@ -46,7 +49,7 @@ autotest/
 │   │   └─ locators/         元素定位器 YAML（按项目一份）
 │   ├─ pages/                页面对象：base_page / gsr_admin_page / scan_login_page / payroll_package_page
 │   ├─ utils/                浏览器、执行器、元素定位、YAML、变量、企业微信
-│   ├─ testcases/            YAML 用例 + 附件
+│   ├─ testcases/            YAML 用例 + 附件（_TEMPLATE_ui_case.yaml 为模板）
 │   ├─ conftest.py           browser 会话级夹具
 │   └─ test_from_yaml.py     YAML 用例入口
 └─ reports/                  统一产物（不进 git）

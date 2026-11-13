@@ -48,6 +48,15 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 
 ### 阶段 2 —— 用例设计（接口 + UI 双轨）
 
+**先复制模板，不要从空白文件开始**（模板本身是 lint 干净的，可直接当格式基准）：
+
+| 模板 | 用途 |
+| --- | --- |
+| `api/testcase/test_TEMPLATE_api.xlsx` | 接口用例：三 sheet、12 列、常用动作示例（GET/POST/db_select/download/retry/负向/清理） |
+| `ui/testcases/_TEMPLATE_ui_case.yaml` | UI 用例：结构 + **全部动作清单与 data/expected 语义**（写 UI 用例前必看） |
+| `ui/config/locators/_TEMPLATE_locators.yaml` | 定位器：`by: id/xpath/css/name` 四种写法 + antd 按钮空格坑 |
+| `docs/用例编写模板.md` | 列定义、专用动作表、命名规范、设计口径（本文档的展开版） |
+
 先按层拆分：
 - 纯后端逻辑、参数校验、数据落库、状态字段 → **接口层**
 - 页面展示、交互流程、元素状态、前端校验提示 → **UI 层**
@@ -67,6 +76,16 @@ UI 层（YAML 驱动）：
 - 注册项目：`ui/config/settings.py` 的 `PROJECT_CONFIGS`（`PAGE_NAME` / `TESTCASES_PATH` / `ELEMENT_LOCATORS` / `LOADING_SELECTOR`）
 - 需要新增页面对象时：`ui/pages/<page>.py` 继承 `GsrAdminPage`，并在 `PAGE_CLASSES`、`PAGE_URLS` 注册
 
+#### 2.1 用例设计口径（写之前先对齐这 7 条）
+
+1. **只测前端造得出来的场景**：非法枚举、空必填、跨租户 ID 这类"接口脏数据健壮性"**不做**（公司口径：前端能拦即可）。
+2. **造数路径必须页面可达**：需要"包含全部标签"就用跨组标签组合，别造页面点不出来的配置。
+3. **断言要验关键业务字段**：`code=200` 只证明没报错；金额、状态、数量、落库结果才是断言重点。
+4. **三 sheet + 清理**：造数必须清理，跑完自检无残留（如薪资包 `status=5`、绑定结算包 `del_flag=2`）。
+5. **数据唯一化**：日期/名称带唯一后缀，否则重跑会撞历史数据（如销假后同一时段不可重提）。
+6. **`retry` 只用于异步状态流转**（只认纯数字或 dict），不要用它掩盖真实失败。
+7. **明确列出「不做」的用例**并写原因（例：未配置国家模板的场景不做）。
+
 ### 阶段 2.5 —— 找元素（只做一次，之后复用）
 
 ```powershell
@@ -83,6 +102,7 @@ antd 按钮两个汉字会插空格（`搜 索`/`重 置`），用 `xpath=//butt
 ```powershell
 python run.py lint                     # 全量
 python run.py lint --project <项目名>   # 单项目
+python run.py lint --suite ui --project <UI项目名> --file <某个yaml>   # 单文件（按该项目定位器校验）
 ```
 - **有错误（退出码 1）不许执行**：打回阶段 2 改用例，不要"先跑跑看"。
 - 警告可以带着跑，但要读一眼（多为 case_id 重复、占位行、sheet 名不规范）。
