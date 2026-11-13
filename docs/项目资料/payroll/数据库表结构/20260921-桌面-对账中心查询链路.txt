@@ -1,0 +1,198 @@
+  可能的查询链路
+
+  -- 1. 先查财务收款主单
+  SELECT *
+  FROM gsr_settlement_financing_proceeds
+  WHERE settlement_financing_proceeds_id = 5860;
+
+  -- 2. 通过结算包找到关联对账包
+  SELECT
+      scp.settlement_client_package_id,
+      scp.settlement_financing_proceeds_id,
+      scp.gsr_payroll_reconciliation_package_id,
+      rp.statement_file_path,
+      rp.reconciliation_data_source
+  FROM gsr_settlement_client_package scp
+  JOIN gsr_payroll_reconciliation_package rp
+    ON rp.gsr_payroll_reconciliation_package_id = scp.gsr_payroll_reconciliation_package_id
+  WHERE scp.settlement_financing_proceeds_id = 5860;
+
+  -- 3. 查该对账包在算薪任务结算节点的状态
+  SELECT
+      pctr.gsr_payroll_reconciliation_package_id,
+      pctr.task_node,
+      pctr.st_status,
+      pctr.update_by,
+      pctr.update_time
+  FROM gsr_payroll_client_task_record pctr
+  JOIN gsr_settlement_client_package scp
+    ON scp.gsr_payroll_reconciliation_package_id = pctr.gsr_payroll_reconciliation_package_id
+  WHERE scp.settlement_financing_proceeds_id = 5860
+    AND pctr.task_node = '3'
+  ORDER BY pctr.update_time DESC;
+
+  关系总结
+
+  gsr_settlement_financing_proceeds  财务收款主单
+          ↓ settlement_financing_proceeds_id
+  gsr_settlement_client_package      客户收款结算包 / 结算包与对账包关系
+          ↓ gsr_payroll_reconciliation_package_id
+  gsr_payroll_reconciliation_package 对账包，保存对账单文件路径
+          ↓ gsr_payroll_reconciliation_package_id
+  gsr_payroll_client_task_record     算薪任务节点记录，保存结算状态、操作人、时间
+
+  结论
+  reconciliationPackageItemList 里这一条数据的核心记录位置应该是：
+
+  文件路径：gsr_payroll_reconciliation_package.statement_file_path
+  包 ID：gsr_payroll_reconciliation_package.gsr_payroll_reconciliation_package_id
+  状态：gsr_payroll_client_task_record.st_status
+  更新人：gsr_payroll_client_task_record.update_by
+  更新时间：gsr_payroll_client_task_record.update_time
+
+  如果要看后端精确 SQL，最好搜索 reconciliationPackageItemList 这个 Java DTO 字段名，或者搜索
+  statementFilePath、isStatementFile 的赋值处，那里能确认最终取值逻辑。
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  CREATE TABLE `gsr_talent_candidate` (
+  `candidate_id` bigint NOT NULL AUTO_INCREMENT COMMENT '候选人ID（唯一自增id）',
+  `position_id` bigint DEFAULT NULL COMMENT '岗位ID',
+  `ability_id` bigint DEFAULT NULL COMMENT '人才ID',
+  `consultant_id` bigint DEFAULT NULL COMMENT '顾问ID',
+  `entry_method` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '候选人录入方式（RPA/人工）',
+  `status` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '候选人状态(1-初筛、2-匹配、3-面试、4-待入职、5-保护期、6-成功交付、7-一次开票、8-二次开票、)',
+  `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '候选人名称',
+  `alias` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '别名',
+  `gender` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '性别',
+  `salary` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '薪资',
+  `currency` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '币种',
+  `nationality` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '国籍',
+  `city` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '城市',
+  `race` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '民族',
+  `languages` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '语言',
+  `function_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '职能',
+  `phone` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '手机号',
+  `email` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '邮箱',
+  `process_id` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '流程实例ID',
+  `resume_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '简历路径',
+  `score` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'AI评分',
+  `offer_date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'offer日期',
+  `entry_date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '入职日期',
+  `regular_worker_date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '转正日期',
+  `resignation_date` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '离职时间',
+  `del_flag` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  `version_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '版本号',
+  `created_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '创建者',
+  `created_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `updated_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '更新者',
+  `updated_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `create_code` bigint DEFAULT NULL COMMENT '创建者代码',
+  `update_code` bigint DEFAULT NULL COMMENT '更新者代码',
+  `resume_report_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '简历报告路径',
+  `contract_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '合同类型',
+  `create_by` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '创建人名称',
+  `create_by_code` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '创建人code',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `remark` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
+  `update_by` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '更新者',
+  `update_by_code` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '更新者ID',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `function_id` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '职能/职位 id',
+  `pull_project_method` varchar(10) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '拉入岗位方式：1-人工录入，2-RPA录入，3-Ai录入',
+  `channel` varchar(10) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '渠道方式：',
+  `road` varchar(10) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '渠道方式：',
+  `candidate_group` varchar(1) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '2' COMMENT '候选人分组：0-最新AI返回，1-历史AI返回，2-手动添加',
+  `return_time` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '返回时间',
+  `contact_time` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '获取联系方式开始时间',
+  `contact_status` int DEFAULT NULL,
+  `email_tag` int DEFAULT NULL COMMENT '是否发送邮件：0是1否',
+  PRIMARY KEY (`candidate_id`) USING BTREE,
+  UNIQUE KEY `position_id` (`position_id`,`ability_id`) USING BTREE,
+  UNIQUE KEY `idx_position_ability_unique` (`position_id`,`ability_id`),
+  KEY `idx_del_flag` (`del_flag`) USING BTREE,
+  KEY `idx_status` (`status`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=2101923741679374338 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+
+
+
+
+
+CREATE TABLE `gsr_talent_ability_info` (
+  `talent_ability_info_id` bigint NOT NULL AUTO_INCREMENT COMMENT '人才主键ID',
+  `head_path` varchar(255) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '头像地址',
+  `name` varchar(256) NOT NULL COMMENT '姓名',
+  `alias` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '别名',
+  `gender` char(1) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '性别:0-男,1-女,2-未知',
+  `area_code` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '区号',
+  `area_country` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '区号对应国家',
+  `phone_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '电话号码',
+  `road` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '途径',
+  `remarks` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '其他途径时填写字段',
+  `status` char(1) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '1' COMMENT '人才状态(1-共享、2-交叉项目、3-锁定、4-成功交付)',
+  `old_status` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '存储人才上次的旧状态',
+  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '邮箱',
+  `nationality` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '国籍',
+  `city` varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '所在城市',
+  `company` varchar(255) DEFAULT NULL COMMENT '公司',
+  `function_id` int DEFAULT NULL COMMENT '职能ID',
+  `function_name` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '职能名称',
+  `birthday` datetime DEFAULT NULL COMMENT '生日',
+  `industry_id` int DEFAULT NULL COMMENT '行业Id',
+  `industry_name` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '行业名称',
+  `languages` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '语言',
+  `race` char(1) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '人种:1-华人 2-非华人',
+  `resume_path` varchar(2000) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '简历路径',
+  `entry_date` datetime DEFAULT NULL COMMENT '入职时间',
+  `resignation_date` datetime DEFAULT NULL COMMENT '离职时间',
+  `join_project_flag` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT 'false' COMMENT '是否加入项目 true-已加入  false-未加入',
+  `del_flag` char(1) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  `job` varchar(128) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL COMMENT '岗位',
+  `create_by` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT '' COMMENT '创建者',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `create_by_code` bigint DEFAULT NULL COMMENT '创建人编码',
+  `update_by_code` bigint DEFAULT NULL COMMENT '更新人编码',
+  `foreign_url` varchar(3072) DEFAULT NULL,
+  `foreign_url_md5` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT '',
+  `keywords_body` longtext CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci,
+  `resume_body` mediumblob,
+  `remark` varchar(50) DEFAULT NULL COMMENT '备注',
+  `balance_payment` decimal(19,2) DEFAULT NULL COMMENT '尾款金额',
+  `balance_payment_percent` decimal(5,2) DEFAULT NULL COMMENT '尾款百分比',
+  `channel` varchar(10) DEFAULT NULL COMMENT '简历来源渠道',
+  `city_id` int DEFAULT NULL COMMENT '所在城市ID',
+  `cny_rate` decimal(10,4) DEFAULT NULL COMMENT 'CNY汇率',
+  `country` varchar(64) DEFAULT NULL COMMENT '国家',
+  `down_payment` decimal(19,2) DEFAULT NULL COMMENT '首付金额',
+  `down_payment_percent` decimal(5,2) DEFAULT NULL COMMENT '首付百分比',
+  `eliminate_flag` char(1) DEFAULT NULL COMMENT '淘汰标志',
+  `employ_status` varchar(20) DEFAULT NULL COMMENT '员工状态',
+  `exchange_rate` decimal(10,4) DEFAULT NULL COMMENT '汇率',
+  `invoice_way` varchar(1) DEFAULT NULL COMMENT '开票方式',
+  `is_have` bit(1) DEFAULT NULL COMMENT '是否当前拥有人才',
+  `is_not_join` bit(1) DEFAULT NULL COMMENT '是否未加入项目',
+  `is_notes` bit(1) DEFAULT NULL COMMENT '是否备注',
+  `is_resignation` char(1) DEFAULT NULL COMMENT '是否离职',
+  `offer_date` datetime DEFAULT NULL COMMENT 'offer日期',
+  `prediction_currency` varchar(10) DEFAULT NULL COMMENT '预测币种',
+  `project_status` varchar(2) DEFAULT NULL COMMENT '人才在项目中的状态',
+  `reality_charge` decimal(19,2) DEFAULT NULL COMMENT '服务费',
+  `reality_currency` varchar(10) DEFAULT NULL COMMENT '实际币种',
+  `reality_service_charge` decimal(19,2) DEFAULT NULL COMMENT '实际服务费',
+  `recommendation_report` varchar(255) DEFAULT NULL COMMENT '推荐报告',
+  `salary` decimal(19,2) DEFAULT NULL COMMENT '薪资',
+  `service_charge` decimal(19,2) DEFAULT NULL COMMENT '服务费预测',
+  `service_rate` decimal(10,4) DEFAULT NULL COMMENT '费率',
+  `talent_project_info_id` bigint DEFAULT NULL COMMENT '项目主键ID',
+  `entry_method` varchar(10) DEFAULT NULL COMMENT '录入方式：1-人工录入，2-RPA录入，3-Ai录入',
+  PRIMARY KEY (`talent_ability_info_id`) USING BTREE,
+  KEY `foreign_url_md5` (`foreign_url_md5`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=2101923741641625603 DEFAULT CHARSET=utf8mb3 COMMENT='人才基本信息表'

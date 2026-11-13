@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>【管理端】支持薪资包发起结算 · 需求人话版解读</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 20px 80px;
+    background: #f6f7f9; color: #1f2328;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.8;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header { margin-bottom: 28px; }
+  .kicker { font-size: 12px; color: #6b7280; letter-spacing: .5px; }
+  h1 { font-size: 24px; font-weight: 600; margin: 6px 0 10px; line-height: 1.4; }
+  .sub { color: #5b6470; font-size: 13px; }
+
+  section { background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; }
+  h2 { font-size: 17px; font-weight: 600; margin: 0 0 6px; padding-left: 12px; border-left: 4px solid #185FA5; line-height: 1.5; }
+  h3 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; color: #0C447C; }
+  p { margin: 8px 0; }
+  .lead { font-size: 15px; }
+  strong { font-weight: 600; }
+  code { background: #f1f3f6; border-radius: 4px; padding: 1px 5px; font-size: 12.5px;
+         font-family: ui-monospace, Consolas, Menlo, monospace; color: #334155; }
+
+  .callout { background: #E6F1FB; border: 1px solid #B5D4F4; border-radius: 10px; padding: 14px 18px; margin: 14px 0; }
+  .callout .tag { font-size: 12px; font-weight: 600; color: #0C447C; letter-spacing: .5px; }
+  .warn { background: #FAEEDA; border-color: #FAC775; }
+  .warn .tag { color: #633806; }
+  .ok { background: #EAF3DE; border-color: #C0DD97; }
+  .ok .tag { color: #27500A; }
+
+  .story { list-style: none; margin: 12px 0 0; padding: 0 0 0 4px; }
+  .story li { position: relative; padding: 0 0 20px 34px; border-left: 2px solid #e2e5ea; }
+  .story li:last-child { border-left-color: transparent; padding-bottom: 4px; }
+  .story li::before {
+    content: attr(data-n);
+    position: absolute; left: -14px; top: 1px; width: 26px; height: 26px;
+    border-radius: 50%; background: #185FA5; color: #fff;
+    font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+  }
+  .story li.done::before { background: #639922; }
+  .story h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #0C447C; }
+  .story p { margin: 4px 0; color: #3f4854; font-size: 13.5px; }
+  .story .who { display: inline-block; font-size: 11.5px; color: #6b7280; background: #f1f3f6;
+                border-radius: 4px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid #e6e8ec; padding: 8px 11px; text-align: left; vertical-align: top; }
+  th { background: #f4f6f9; font-weight: 600; white-space: nowrap; }
+  td.k { white-space: nowrap; font-weight: 600; color: #0C447C; }
+
+  .chips { margin: 10px 0 0; }
+  .chip { display: inline-block; font-size: 11.5px; border-radius: 999px; padding: 2px 10px; margin: 0 6px 6px 0; border: 1px solid; }
+  .chip.new { background: #E6F1FB; border-color: #85B7EB; color: #0C447C; }
+  .chip.mod { background: #FAEEDA; border-color: #EF9F27; color: #633806; }
+  .chip.del { background: #FCEBEB; border-color: #F09595; color: #791F1F; }
+
+  .traps { counter-reset: t; list-style: none; padding: 0; margin: 12px 0 0; }
+  .traps li { counter-increment: t; position: relative; padding: 12px 16px 12px 46px; margin-bottom: 10px;
+              background: #fafbfc; border: 1px solid #e6e8ec; border-radius: 10px; }
+  .traps li::before {
+    content: counter(t); position: absolute; left: 14px; top: 12px;
+    width: 20px; height: 20px; border-radius: 6px; background: #FAEEDA; border: 1px solid #EF9F27;
+    color: #633806; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+  }
+  .traps b { color: #1f2328; }
+
+  ul.plain { margin: 8px 0; padding-left: 20px; }
+  ul.plain li { margin: 4px 0; }
+
+  footer { text-align: center; color: #9aa3af; font-size: 12px; margin-top: 28px; }
+  @media (max-width: 600px) {
+    body { padding: 24px 14px 60px; }
+    h1 { font-size: 20px; }
+    section { padding: 18px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">需求解读 · 人话版</div>
+  <h1>【管理端】支持薪资包发起结算</h1>
+  <div class="sub">读不懂原文时先看这页。建议顺序:一句话 → 故事线 → 名词表 → 逐章翻译 → 踩坑清单</div>
+</header>
+
+<section>
+  <h2>一、一句话讲清这个需求</h2>
+  <p class="lead">
+    以前「薪资包」只是个算薪用的文件夹,算完就结束了。<br>
+    这个需求要做的是:让薪资包算完之后能<b>直接发起付款结算</b>,并且把这条链路和「客户端算薪任务」「结算包」「每刻报销」全都串起来。
+  </p>
+  <p class="sub">所以这份文档表面上是 9 个小章节,实际上只有 <b>1 条主线 + 3 块配套改造</b>。</p>
+  <div class="callout">
+    <div class="tag">主线</div>
+    <p style="margin:6px 0 0">薪资包 → <b>发起结算</b> → 生成/绑定结算包 → 流转到财务付款 → 核销 → 回传每刻</p>
+  </div>
+  <div class="callout warn">
+    <div class="tag">3 块配套改造</div>
+    <ul class="plain" style="margin:6px 0 0">
+      <li><b>报销</b>:补贴类费用要能跟着工资一起发(写进国家模板 R1 列),纯报销则单独走报销结算包</li>
+      <li><b>付款申请</b>:结算包存的 Bank File 要跟着流转给财务;核销后要发薪资单给员工</li>
+      <li><b>数据分析</b>:员工薪资单的字段更名、薪酬周期控件改版、新增「薪资包上传」状态</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>二、用一条故事线走完整个流程</h2>
+  <p class="sub">假设你是 GSR 的薪酬运营,要给客户的约旦员工发 2026-07 的工资。</p>
+  <ol class="story">
+    <li data-n="0">
+      <h4>每月自动开一个「作业本」<span class="who">系统自动</span></h4>
+      <p>系统会在算薪截止日(<code>Cutoff Day</code>)的<b>第二天凌晨 0 点</b>,按「供应商-国家-算薪周期」自动建一个 2026-07 的薪资包。</p>
+      <p>作业本里的员工不是随便抓的 —— <b>只有这个月真的在算薪任务里的员工才进得来</b>。同时系统会把「薪资单ID」和「算薪子任务ID」挂上钩,这样客户端才能看到每个人的算薪结果。</p>
+    </li>
+    <li data-n="1">
+      <h4>这张需求只做「导入已有结果」<span class="who">你操作</span></h4>
+      <p>点【开始算薪】→ 核对薪资项数据 → 选【导入已有结果】。也就是说,算薪是先在线下算好,再回填进系统。</p>
+    </li>
+    <li data-n="2">
+      <h4>点「下载模板」,系统悄悄干了两件事<span class="who">最容易忽略</span></h4>
+      <p><b>不只是给你个文件</b>。它同时在结算中心把「<b>付款结算包-薪资</b>」建好了,状态是「待上传及处理」,并且和薪资包<b>绑在一起</b>。</p>
+      <p>分包规则:员工性质、发薪币、结算币、开票币种、发票类型、税率 —— 这 <b>6 项完全一样</b>的员工,合到同一个包里。</p>
+    </li>
+    <li data-n="3">
+      <h4>上传四类文件,然后校验<span class="who">你操作</span></h4>
+      <p><b>算薪结果</b>(必传,填在下载的国家模板里,要 A+B 数据)、<b>Payslip</b> 工资单(可选)、<b>Bank File</b> 银行文件(可选,给财务)、<b>其他附件</b>(可选)。单文件最大 80M。</p>
+      <p>硬规则:Payslip 是<b>靠文件名最前面的工号认人</b>的,文件名不带工号或写错工号,就匹配不上。</p>
+    </li>
+    <li data-n="4">
+      <h4>确认并发起结算 —— 这里挂钩三件事<span class="who">关键动作</span></h4>
+      <p>① 国家模板数据入库,结算包流转到「待业务审核」;② Bank File 存档(后面付款申请要用);③ 把员工的<b>随薪报销单据号</b>挂到对应的付款结算包ID上。</p>
+      <p>成功后 toast「发起结算成功」,跳到查看算薪结果页,薪资包状态变成「算薪成功」。</p>
+    </li>
+    <li data-n="5">
+      <h4>后面就是付款、核销、回传每刻<span class="who">财务侧</span></h4>
+      <p>结算包走到财务 → 发起付款申请(Bank File 一起带上)→ 核销 → <b>核销后回传每刻</b>,让员工在每刻上看到「已支付」。</p>
+    </li>
+    <li data-n="6" class="done">
+      <h4>反悔了怎么办?作废<span class="who">例外路径</span></h4>
+      <p>二次确认 + 填必填的作废原因。如果已经绑了结算包,得先把它们<b>驳回到「待上传及处理/待创建及确认」</b>才能作废。</p>
+      <p>作废后,原本冻结的<b>报销数据、变动信息、假勤数据</b>会一并解冻,下次重建薪资包时重新拉取最新数据。</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>三、名词速查(看不懂原文八成是卡在这)</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>名词</th><th>人话解释</th></tr>
+    <tr><td class="k">薪资包</td><td>一次算薪的「作业本」,装着员工名单 + 算薪结果 + Payslip / Bank File 等附件。</td></tr>
+    <tr><td class="k">On-Cycle / Off-Cycle</td><td>常规算薪 / 额外补发。同一员工同一个月:On-Cycle 只能进一个包(重复直接报错);Off-Cycle 可以再进一个(会提示确认)。</td></tr>
+    <tr><td class="k">结算包</td><td>真正「装着钱」的单据,走到财务去做付款。分<b>付款</b>方向(把钱发出去)和<b>收款</b>方向(把钱收进来)。</td></tr>
+    <tr><td class="k">付款结算包-薪资</td><td>点「下载模板」时,系统按薪资包员工生成的那个包。业务类型是 <code>EOR-薪资</code>,发薪数据走它。</td></tr>
+    <tr><td class="k">报销结算包</td><td>业务类型 <code>EOR-报销</code>,纯报销的费用单独走它打款。</td></tr>
+    <tr><td class="k">EOR</td><td>Employer of Record,名义雇主。客户在当地没有实体时,由 GSR 代雇佣、代发薪。所以文档里老出现「EOR 类型员工」。</td></tr>
+    <tr><td class="k">每刻</td><td>外部费用报销平台(SaaS)。员工在那提单报销,GSR 把钱付完后<b>回调它的 API</b> 标记「支付已完成」。</td></tr>
+    <tr><td class="k">R1 / 随薪发放的报销</td><td>指标编号 R1,国家模板里的一列。本可以单独报销、但选择<b>跟工资一起发</b>的补贴类费用的汇总金额。</td></tr>
+    <tr><td class="k">国家模板</td><td>按供应商 / 国家定制的算薪结果填写模板。你会发现文件名叫 <code>结算包ID_国家模板</code>。</td></tr>
+    <tr><td class="k">Bank File</td><td>银行付款文件。存在结算包上,付款申请时带给财务去执行付款。</td></tr>
+    <tr><td class="k">Payslip</td><td>工资单文件。</td></tr>
+    <tr><td class="k">SPP / SEP</td><td>结算包 ID 的前缀(示例里 <code>SPP202501160013</code>),不是业务概念,认前缀就行。</td></tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>四、逐章人话翻译(3.1 ～ 3.9)</h2>
+
+  <h3>3.1 薪资包管理列表 —— 加两个「透视窗」</h3>
+  <p>查询条件加【结算包ID】(精确搜索,多个用<b>英文逗号</b>隔开);列表末尾加【结算包ID】和【结算包状态】两列,多个时用逗号隔开。</p>
+  <p>状态一共 10 种:<code>待上传及处理 / 待业务审核 / 待补服务费 / 待财务审核 / 已审核 / 待申请付款 / 待财务复核 / 待付款经办 / 待付款核销 / 已完成</code>。</p>
+  <p class="sub">意义:以前从薪资包看不到钱走到哪了,现在一眼能看到。</p>
+
+  <h3>3.2 创建薪资包 —— 四条改动</h3>
+  <ul class="plain">
+    <li><b>自动创建的条件收紧了</b>:必须是 <code>Cutoff Day 次日中国时区 00:00</code> 这个时点才生成;算薪日历的取法是「优先匹配特定月份配置,其次通用配置」。</li>
+    <li><b>员工名单收窄</b>:只取「该供应商国家下的员工」∩「该算薪周期 On-Cycle 算薪任务下的员工」。原文的例子很典型 —— 张三虽然在供应商国家名单里,但这个月的算薪任务里没他,就<b>不会</b>被建进薪资包。</li>
+    <li><b>新增【薪资包类型】字段</b>(On-Cycle / Off-Cycle,单选必填)。注意:所有历史数据都算 On-Cycle。</li>
+    <li><b>查重只查「同服务月份 + 同类型」</b>:On-Cycle 命中 → 报错不允许创建;Off-Cycle 命中 → 提示「请确认是否再次创建」,确认后可以创建。</li>
+  </ul>
+  <div class="callout warn">
+    <div class="tag">这段里最绕的内容</div>
+    <p style="margin:6px 0 0">3.2 末尾那张表讲的是「报销数据同步」和「每刻回传」。它在文档里<b>出现了两次</b>(3.2 一次、3.3 一次),内容几乎一样。它其实不属于「创建薪资包」,而是发起结算之后的连带逻辑 —— 详见第六节的第 5 条。</p>
+  </div>
+
+  <h3>3.3 开始算薪 → 核对薪资项 → 导入已有结果 —— 主战场</h3>
+  <ul class="plain">
+    <li><b>入口条件</b>:随薪报销列表里如果有<b>异常数据标识</b>,【开始算薪】按钮置灰,走不下去。</li>
+    <li><b>下载模板 = 有副作用</b>:生成「付款结算包-薪资」→ 流转「待上传及处理」→ 绑定薪资包 → 导出 <code>结算包ID_国家模板</code>。已经生成过的<b>不重复生成</b>。</li>
+    <li><b>四类文件</b>:算薪结果(必传)、Payslip(可选)、Bank File(可选)、其他附件(可选)。
+      <br>特例:如果供应商类型是<b>子公司</b>且供应商信息里【是否发送薪资单】= 是,Payslip 上传入口<b>隐藏</b>。</li>
+    <li><b>校验失败的样子</b>:格式是 <code>{文件名称}/{结算单ID}:{失败原因}</code>,多个原因用逗号隔开。有失败时【确认并发起结算】<b>置灰</b>。</li>
+    <li><b>预览统计口径</b>(可拿来直接做断言):<code>x</code> 成功匹配的员工数、<code>y</code> 未成功的,且 <b>x+y = 薪资包员工总数</b>;同理 <b>a+b = 员工总数</b>(Payslip 匹配 / 未匹配);<code>c</code> 是 Bank File 个数、<code>d</code> 是其他文件个数。</li>
+  </ul>
+  <div class="callout">
+    <div class="tag">发起结算时发生的四件事</div>
+    <ul class="plain" style="margin:6px 0 0">
+      <li>结算包逐个上传国家模板,流转「待业务审核」(数据存到新表)</li>
+      <li>每个结算包存下 Bank File,后续付款申请带给财务</li>
+      <li>Payslip 存到「数据分析-员工薪资单」,并记录生成的薪资单ID。字段映射:子公司名称=当前薪资包供应商名称、薪酬周期=服务月份(如 2026-07 或 2026-08-FH)、状态默认「薪资包上传」</li>
+      <li>把随薪报销单据号,绑定到该员工对应的付款结算包ID 上</li>
+    </ul>
+  </div>
+
+  <h3>3.4 查看算薪结果</h3>
+  <ul class="plain">
+    <li><b>四个页签</b>:Payroll Result / Payslip / Bank File / Others。</li>
+    <li><b>Payroll Result 有两个维度可切</b>:
+      <br>「按结算包维度」—— 只有绑了结算包才显示这个切换按钮,能看到结算包ID、状态、国家模板内容;如果这个包被驳回过,还要显示<b>审核人和审核意见</b>。
+      <br>「按员工维度」—— 显示 A/B 部分指标的<b>英文名</b>;不同结算包字段不一样时,<b>取并集</b>,指标编号相同的算同一个薪资项。</li>
+    <li><b>重新算薪</b>:会覆盖原结果。先校验所绑结算包状态都是「待上传及处理 / 待创建及确认」;成功后<b>先清空原薪资单附件再更新</b>,原来没传过的员工要新建一条薪资单ID。</li>
+    <li><b>下载算薪结果</b>:zip 打包,命名 <code>Payroll Result_供应商名称_国家_服务月份</code>,里面含所有国家模板 + 【Employee Payroll Result】+ 所有 Payslip + Bank File + 其他文件。</li>
+    <li>3.4.2.3「发起结算」标注了<b>(后续功能规划)</b> —— 这一节目前是空的。</li>
+  </ul>
+
+  <h3>3.5 作废薪资包</h3>
+  <p>二次确认弹窗 + 必填作废原因。若绑了结算包,<b>必须全部处于「待上传及处理 / 待创建及确认」</b>,否则提示「需驳回到待上传及处理状态,系统才可删除掉结算包并作废薪资包」。</p>
+  <p>通过后:薪资包状态 → 已作废;绑定的结算包被驳回「待创建及确认」并删除、解除绑定;同时解冻三类数据源 —— <b>报销数据</b>、<b>变动信息</b>(状态名从「待锁定/已锁定」改为「待冻结/已冻结」)、<b>假勤申请数据</b>。</p>
+
+  <h3>3.6 付款结算 · EOR 类付款</h3>
+  <p>在【待创建及确认】和【待上传及处理】两个 tab 里,<b>凡是从薪资包侧创建的结算包,确认 / 删除 / 上传 / 驳回按钮全部置灰</b>。</p>
+  <p class="sub">原因很简单:这类包的身家性命由薪资包管着,不能在结算侧单独动。</p>
+
+  <h3>3.7 付款申请</h3>
+  <ul class="plain">
+    <li>手动发起 / 不合并付款时自动发起 → 结算包的 Bank File 要带到付款申请的【上传供应商提供的材料】字段。</li>
+    <li><b>多个结算包合并付款时,如果 Bank File 相同,去重只带一个。</b></li>
+    <li>核销完成后,若业务类型是 <code>EOR薪资 / EOR报销</code> 且供应商是 <b>GSR 子公司</b>:原逻辑会生成薪资单发给员工,新逻辑改为<b>从「数据分析-员工薪资单」取附件</b>发给员工。查找链路:付款结算包ID → 薪资包ID → 员工薪资单ID(只取当前付款申请涉及的员工)。</li>
+  </ul>
+
+  <h3>3.8 报销数据 · 已完成 TAB</h3>
+  <p>列表<b>不再显示</b>【系统处理结果】字段。同时新增【同步结果】字段(见第六节第 5 条)。</p>
+
+  <h3>3.9 数据分析 · 员工薪资单</h3>
+  <ul class="plain">
+    <li><b>字段改名</b>:【子公司名称】→【供应商名称】。查询条件、导入 / 查看 / 编辑弹窗<b>同步修改</b>。</li>
+    <li><b>供应商可选范围放开</b>:不再限制只有子公司类型,所有供应商都能选。</li>
+    <li><b>薪酬周期拆成两个选择框</b>:第一个选年月(如 2026-07),第二个选周期(月度 / 上旬 / 下旬)。选项由所选供应商的<b>合同条款发薪频率</b>决定:
+      <br>全是月度 → 第二个框默认「月度」;全是双周 → 「月度」置灰不可选;不一致 → 都能选且无默认值。</li>
+    <li><b>状态</b>新增「薪资包上传」选项,查询条件里也要有这个值。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>五、这需求到底「改了什么」(测试范围视角)</h2>
+  <div class="chips">
+    <span class="chip new">新增</span>
+    <span class="chip mod">修改</span>
+    <span class="chip del">下线</span>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <tr><th style="width:80px">类型</th><th>内容</th></tr>
+    <tr><td><span class="chip new">新增</span></td><td>薪资包类型字段(On/Off-Cycle)、列表的结算包ID与状态列、结算包ID查询、薪资包类型查询、发起结算流程、报销数据-已完成新增【同步结果】字段、员工薪资单新增「薪资包上传」状态、核销后回传每刻</td></tr>
+    <tr><td><span class="chip mod">修改</span></td><td>自动创建触发时点、员工数据生成逻辑(收窄到算薪任务内)、添加员工逻辑、查重规则、Payslip 入口显隐规则、Bank File 携带与去重规则、核销后发薪资单的取值来源、薪资单字段名与薪酬周期控件</td></tr>
+    <tr><td><span class="chip del">下线</span></td><td>薪资包创建成功后直接同步报销数据(改由发起结算触发)、报销数据-已完成TAB的【系统处理结果】字段、状态名「待锁定/已锁定」(改为「待冻结/已冻结」、假勤改为「取消冻结」)</td></tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>六、读完之后最容易「想当然」的地方</h2>
+  <ol class="traps">
+    <li><b>「下载模板」不是纯下载。</b>它会建结算包、绑薪资包、改状态。所以「重复点会怎样」是个必测点 —— 需求写了「已生成过无需重复生成」。</li>
+    <li><b>触发时点是「次日 00:00」,那当天呢?</b>原文只写了正向,没写当天。当天应当是「不生成」,但这是需要跟产品确认的口径。</li>
+    <li><b>Payslip 靠文件名认人。</b>文件名最前面必须是员工在 GSR 的内部工号。而且支持一个员工有多个 Payslip。</li>
+    <li><b>发起结算按钮有两个置灰条件</b>:①随薪报销列表存在异常数据;②导入校验存在失败。这两个是<b>不同环节</b>的闸门,别混成一个用例。</li>
+    <li><b>「一单两包」的拼接顺序是写死的</b>。某报销单据既有报销费用又有补贴费用时,结算包ID 显示为 <code>报销包ID,薪资包ID</code> —— 报销包在前。状态同理。示例:80 元报销 + 20 元补贴 → <code>SPP202501160013,SPP202502090029</code>。</li>
+    <li><b>回传每刻是「两条腿都结清才回传」</b>。
+      <br>【EOR-报销】核销后,要确认该单据<b>没有随薪未付费用</b>;【EOR-薪资】核销后,要确认该单据<b>没有纯报销未付费用</b>。
+      <br>只结一条就回传 = Bug;两条都结清却重复回传 = 也是 Bug(要幂等)。</li>
+    <li><b>回传每刻有两个前置条件</b>:支付人员工号默认传账号名为 <code>GSR</code> 的工号,而<b>前提是每刻平台上已经创建过这个账号</b>。这条很容易漏测。</li>
+    <li><b>「重新算薪」会清空重建薪资单附件。</b>原来上传过的附件要先清空再更新,原来是空的员工要新建一条薪资单ID。删了没补、或重复建,都是典型缺陷点。</li>
+    <li><b>作废之前必须先处理结算包。</b>状态不对时系统只给提示、不作废。而且作废会连带解冻三类数据源,涉及报销数据、变动信息、假勤三个页面。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>七、原文里几个可以找产品澄清的点</h2>
+  <ul class="plain">
+    <li><b>3.2 这段的措辞和时序有矛盾。</b>开头写「薪资包创建成功后无需直接将报销数据同步到付款结算包中……删除的对应逻辑如下」,读起来像是在说「旧逻辑被删掉、这里是调整后的说明」;但表格里写同步触发时点是「数据完成冻结后」,而目标结算包要到「发起结算」才生成 —— 冻结时同步必然找不到包。建议确认<b>同步的真实触发时点</b>。</li>
+    <li><b>同一段内容重复贴了两次</b>(3.2 末尾 + 3.3 末尾),包含那张表格,内容几乎一致。</li>
+    <li><b>3.2 只写「薪资结算包ID」,没带「付款」二字</b>,和 3.3 的「付款结算包-薪资」命名没对齐,存在指代歧义。</li>
+    <li><b>文档里有两处是「Click the image to view the sheet.」外链图片</b> —— 分别是算薪结果校验规则和 Payslip 校验规则。这两张表的具体校验项文档正文里没有,拿到原表后校验用例才能写细。</li>
+    <li><b>【结算包ID】多值搜索只说了「英文逗号」。</b>中文逗号、空格、分号时的行为没写死,需要定口径。</li>
+    <li><b>3.4.2.3「发起结算」标注了「后续功能规划」</b>,目前是空章节,需要确认是否在本期范围。</li>
+  </ul>
+</section>
+
+<footer>本页由 AI 辅助整理,基于《【管理端】支持薪资包发起结算需求文档》原文,仅用于需求理解参考。口径以产品最终确认为准。</footer>
+
+</div>
+</body>
+</html>
