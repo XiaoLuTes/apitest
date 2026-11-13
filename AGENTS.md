@@ -36,11 +36,11 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 要做的事：
 1. 提取**业务规则**、状态流转、权限差异、边界与异常、数据依赖。
 2. 判断改动影响面：涉及哪些页面、哪些接口、哪些历史用例需要回归。
-3. 产出 `docs/requirements/<需求名>.md`：
-   - 需求摘要（一句话）
-   - 规则矩阵（规则编号 R1、R2…）
-   - 测试点清单（测试点编号 → 覆盖哪条规则 → 接口层/UI 层/不可自动化）
-   - 未覆盖项 + 原因（明确写出来，别默默漏掉）
+3. **产出 `docs/requirements/<需求名>.md`，直接套模板**：`docs/需求拆分模板.md`
+   （示例：`docs/requirements/示例-薪资包管理查询.md`）。必须写全这 10 节：
+   需求信息 / 需求摘要 / **规则矩阵（R1、R2…）** / **测试点清单（TP-01…→ 覆盖哪条规则 → 接口·UI·不可自动化）** /
+   用例映射（评审后回填）/ **不做的场景 + 原因** / 影响面与回归范围 / 数据与前置 / 待确认与风险 / 交付清单
+   硬要求：每条测试点必须挂到某条规则上（不允许无来源的测试点）；不做的场景必须写原因。
 4. 需求不清晰时：**照样列测试点并在文档里标注"待确认"**，不要停下来等；公司口径是"多提、可去重、允许噪音"。
    前端造不出来的非法数据/脏数据**不做**接口健壮性用例（只验证前端有拦截即可）。
 
@@ -146,7 +146,77 @@ python run.py zentao --submit --yes      # 人工确认后再执行
 
 ---
 
-## 3. 硬约束（违反即返工）
+## 3. 用例格式约束（硬性，写用例前必看）
+
+模板：`api/testcase/test_TEMPLATE_api.xlsx`、`ui/testcases/_TEMPLATE_ui_case.yaml`、
+`ui/config/locators/_TEMPLATE_locators.yaml`；展开说明见 `docs/用例编写模板.md`。
+**新用例必须照模板写；存量文件缺列不算阻塞，但不许再新增缺列文件。**
+
+### 3.1 接口用例（xlsx）
+
+列（顺序固定，缺列 lint 会告警）：
+
+| 列 | 必填 | 约束 |
+| --- | --- | --- |
+| `case_id` | ✅ | 唯一；准备/执行/清理各自前缀便于追溯 |
+| `场景` | ✅ | `模块｜子场景` 分组名，同组用例共用同一个值（如 `薪资包管理｜按ID查询`） |
+| `场景说明` | ✅ | 一句话写 **前置 + 操作 + 预期**，带具体单据号/字段值（如 `前置：已有 SAL-20261112-0001；操作：按ID精确查询；预期：total=1 且国家/状态与页面一致`） |
+| `name` | ✅ | **必须以「管理端｜」或「员工端｜」开头**（决定 host 与鉴权头），写具体校验点 |
+| `headers` | ✅ | `${headers_admin}` / `${headers_user}` 或完整 JSON |
+| `method` | ✅ | `GET/POST/PUT/DELETE/PATCH` + 专用动作 `db_select/db_update/download/editexcel/upload/payrollconfirm/pkgquery` |
+| `url` | ✅ | 相对路径，host 由 `name` 的端前缀决定；`db_*`/`editexcel`/`pkgquery` 可留空 |
+| `data` | ✅ | 普通接口 = 参数 JSON；`db_*` = **SQL**；`download` = `{"dir","var"}`；`editexcel` = `{"file","cells"或"index_cells"}` |
+| `validata` | ✅ | 普通接口 = JSON `{"$.code":200,"$.rows[0].id":"${demo_id}"}`；`db_select` = `字段=值`；`db_update` = 影响行数；`pkgquery` = `字段=值` |
+| `response` | 建议 | 框架回写返回原文，排障用 |
+| `extract` | 按需 | `{"变量名":"$.path"}`，产出给后续用例 `${变量名}` |
+| `retry` | 按需 | **只认纯数字或 dict**（如 `5`）；用于异步状态流转，不许用来掩盖真实失败 |
+| `备注` | 建议 | 这条用例为什么存在、数据从哪来 |
+
+其他硬性约束：
+
+1. **三 sheet 顺序固定**：`数据准备` → `测试执行` → `数据清理`；造了数据必须清理，跑完无残留。
+2. **断言不许只写 `code=200`**：必须覆盖业务字段（金额/状态/数量/落库结果）。
+3. **只测前端造得出来的场景**：脏数据、非法枚举、跨租户 ID 一律不写。
+4. **数据唯一化**：名称/日期带唯一后缀，否则重跑撞历史数据。
+5. **变量**：`extract` / `download.var` / `pkgquery` 产出的变量可跨用例用 `${变量}`；未定义变量 lint 直接报错。
+6. 单文件校验：`python run.py lint --project <项目名>`；**ERROR 不为 0 不许执行**。
+
+### 3.2 UI 用例（yaml）
+
+```yaml
+test_cases:                     # 固定根节点
+- id: 项目-01-场景               # 唯一
+  name: 项目-场景-校验点          # 会进报告/证据/提单
+  page: payroll_package_page     # 必须是本项目 PAGE_NAME 里的页面对象
+  steps:
+    - step_name: 1、做什么        # 步骤名要写清动作，会进提单的 [步骤]
+      element: pkg_code_input    # 必须在 ui/config/locators/<项目>.yaml 里存在
+      action: input              # 动作白名单，见模板底部清单（22 个）
+      data: 'SAL-20261112-0001'  # 按动作语义：输入值/期望值/变量名/秒数/文件名
+      expected: ...              # 仅 edit_excel 等用作配置 JSON
+```
+
+硬性约束：
+
+1. `element` 必须已存在：没有就 `tools/ui_capture.py` 采集后写进定位器，**不许写"猜"的选择器**。
+2. `action` 必须在白名单内；`data`/`expected` 的语义按模板注释写（如 `check_exists` 只填 `存在`/`不存在`，`wait` 填整数秒）。
+3. **变量语法**：`{变量名}`（preload + 前序 `save_text/save_value`）；要字面量大括号写 `{{变量名}}`；
+   `${变量名}` 是接口侧写法，**UI 里无效**。
+4. 校验类断言要断言**关键业务字段**（编号/状态/金额/条数），不要只判"元素存在"。
+5. 步骤要可复现：先 `wait_exists` 等元素/接口回来，再 `check_text`，不要靠固定 sleep。
+6. 表格取数要排除 antd 占位行（`ant-table-placeholder` / `ant-table-measure-row`），页面对象里已有实现可抄。
+7. 单文件校验：`python run.py lint --suite ui --project <项目名> --file <yaml>`。
+
+### 3.3 命名规范
+
+| 对象 | 规范 | 例 |
+| --- | --- | --- |
+| 接口 `name` | `端｜模块｜场景-预期` | `管理端｜薪资包管理｜按薪资包ID查询-命中` |
+| UI `id` | `项目-序号-场景` | `薪资包管理-02-查询不存在的薪资包ID` |
+| UI `name` | `项目-场景-校验点` | `薪资包管理-查询不存在的薪资包ID-列表为空` |
+| 步骤名 | `序号、动作对象 + 动作` | `3、点击「搜 索」` |
+
+## 4. 硬约束（违反即返工）
 
 1. **只改 `autotest/`**：`D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright` 一律只读。
 2. **凭据只在 `.env`**：不写进代码、不写进文档、不提交 git；不把账号密码贴进单据。
@@ -156,7 +226,7 @@ python run.py zentao --submit --yes      # 人工确认后再执行
 6. 报告目录（`reports/`）不进 git；`api/variable/extract.yaml` 是运行期产物，也不入库。
 7. 遇到不确定的环境/权限现象：**报告用户**（附错误码与证据），不要改断言去"迁就"环境。
 
-## 4. 常见任务索引
+## 5. 常见任务索引
 
 | 任务 | 去哪里改 |
 | --- | --- |
@@ -171,7 +241,7 @@ python run.py zentao --submit --yes      # 人工确认后再执行
 | 采集证据（自定义场景） | `ui/utils/evidence.py::EvidenceRecorder`，参考 `tools/demo_pkg_search.py` |
 | 看报告 | `reports/`（allure-results / results / logs / screenshots / evidence / zentao） |
 
-## 5. 已知坑（踩过的，别再踩）
+## 6. 已知坑（踩过的，别再踩）
 
 | 现象 | 真相 / 处理 |
 | --- | --- |
@@ -187,7 +257,7 @@ python run.py zentao --submit --yes      # 人工确认后再执行
 | `conditionalActivation` 导致审批流不生效 | 假勤模板 deploy 时必须传 `0` |
 | `${var}` 在 UI 用例里不生效 | UI 只认 `{var}`；要字面量写 `{{var}}`（`VariableStore.render` 支持转义） |
 
-## 6. 文档地图
+## 7. 文档地图
 
 | 文件 | 用途 |
 | --- | --- |
@@ -199,7 +269,7 @@ python run.py zentao --submit --yes      # 人工确认后再执行
 | `api/variable/all.yaml` | 接口全局变量（`headers_admin` / `headers_user` 等） |
 | `docs/requirements/` | 需求拆分产物（测试点清单） |
 
-## 7. 交付汇报模板（每次任务结束按这个回）
+## 8. 交付汇报模板（每次任务结束按这个回）
 
 ```text
 1) 需求/范围：<需求名>，覆盖 R1..Rn；未覆盖：<项 + 原因>
