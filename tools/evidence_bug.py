@@ -54,10 +54,15 @@ def _brief_response(call, limit=600):
     try:
         data = json.loads(body)
         if isinstance(data, dict):
-            keep = {k: data[k] for k in ("code", "msg", "total", "rows", "status", "error") if k in data}
+            keep = {k: data[k] for k in
+                    ("code", "msg", "total", "status", "error", "data", "rows") if k in data}
             if isinstance(keep.get("rows"), list):
                 keep["rows"] = f"<{len(keep['rows'])} 条>"
             body = json.dumps(keep, ensure_ascii=False)
+            if len(body) > limit:                 # data 太长时保留关键结构
+                if isinstance(keep.get("data"), dict):
+                    keep["data"] = {k: keep["data"][k] for k in list(keep["data"])[:12]}
+                body = json.dumps(keep, ensure_ascii=False)
     except ValueError:
         # 响应被截断导致 JSON 不完整时，尽量抽出 total/rows 的规模
         matched_total = re.search(r'"total"\s*:\s*(\d+)', body)
@@ -72,14 +77,28 @@ def _brief_response(call, limit=600):
     return body[:limit]
 
 
+def _pre(text):
+    """等宽块：禅道富文本里用 pre 保持 JSON 缩进/换行"""
+    return ('<pre style="font-family:Consolas,Monaco,monospace;font-size:12px;'
+            'background:#f6f8fa;padding:8px;border-radius:4px;white-space:pre-wrap;'
+            f'word-break:break-all;">{_esc(text)}</pre>')
+
+
 def build_steps_html(evidence, image_ids=None):
-    """按公司模板生成 HTML：[前置条件]/[步骤]/[结果]/[期望]/[截图]/[备注]"""
+    """按"接口证据图"的结构生成重现步骤：
+
+        [前置条件] / [步骤] / [接口] / [请求参数] / [接口返回] / [期望] / [实际] / [截图] / [备注]
+
+    - 接口类：接口 / 请求参数 / 接口返回 三段齐全（不配截图）
+    - UI 类：步骤 + 接口（页面抓到的请求）+ 期望/实际 + 截图
+    """
     steps = evidence.get("steps") or []
     api_calls = evidence.get("api_calls") or []
     env = evidence.get("env") or os.getenv("ENV", "测试环境")
     parts = ["<p><strong>[前置条件]</strong></p>",
              f"<p>{_esc(evidence.get('precondition') or f'管理端已登录；环境：{env}')}</p>"]
 
+    # ---- [步骤] ----
     parts.append("<p><strong>[步骤]</strong></p>")
     for idx, step in enumerate(steps, start=1):
         detail = step.get("name") or ""
@@ -89,27 +108,37 @@ def build_steps_html(evidence, image_ids=None):
             detail += f"（{step['note']}）"
         parts.append(f"<p>{idx}. {_esc(detail)}</p>")
 
-    parts.append("<p><strong>[结果]</strong></p>")
-    parts.append(f"<p>{_esc(evidence.get('actual') or '见下方接口返回与截图')}</p>")
+    # ---- [接口] / [请求参数] / [接口返回] ----
     keyword = evidence.get("api_keyword") or ""
-    # 指定了关键字就按关键字挑；否则取"最后一次接口"（失败前刚发生的那次操作）
     picked = [c for c in api_calls if keyword and keyword in (c.get("url") or "")]
-    for call in (picked[-1:] or api_calls[-1:]):  # 只带"本次操作"对应的一条接口
+    call = (picked[-1:] or api_calls[-1:])
+    call = call[0] if call else None
+    if call:
+        status = call.get("status")
+        status_text = f"（HTTP {status}）" if status is not None else ""
+        parts.append("<p><strong>[接口]</strong></p>")
+        parts.append(f"<p>{_esc(call.get('method'))} {_esc(call.get('url'))}{status_text}</p>")
+        if call.get("request_body"):
+            parts.append("<p><strong>[请求参数]</strong></p>")
+            parts.append(_pre(call.get("request_body")))
+        if call.get("response"):
+            parts.append("<p><strong>[接口返回]</strong></p>")
+            parts.append(_pre(_brief_response(call)))
 
-        parts.append(
-            f"<p>接口：{_esc(call.get('method'))} {_esc(call.get('url'))}"
-            f"（HTTP {call.get('status')}）<br/>返回：{_esc(_brief_response(call))}</p>")
-
+    # ---- [期望] / [实际] ----
     parts.append("<p><strong>[期望]</strong></p>")
     parts.append(f"<p>{_esc(evidence.get('expect') or '（需补充期望结果）')}</p>")
+    if evidence.get("actual"):
+        parts.append("<p><strong>[实际]</strong></p>")
+        parts.append(f"<p>{_esc(evidence.get('actual'))}</p>")
 
-    # 内联图片：该禅道版本的 <img src="{id}.png"> 占位符不会渲染成图片，
-    # 所以统一改为"步骤里注明附件名"，截图本身以附件形式挂在单据上（可点击查看）
+    # ---- [截图]：只有真有图（UI 失败）才写 ----
     shots = [os.path.basename(p) for p in (evidence.get("screenshots") or []) if os.path.isfile(p)]
     if shots:
         parts.append("<p><strong>[截图]</strong></p>")
         parts.append("<p>见本单附件：" + "、".join(_esc(name) for name in shots) + "</p>")
 
+    # ---- [备注] ----
     parts.append("<p><strong>[备注]</strong></p>")
     parts.append(f"<p>自动化提单：用例 {_esc(evidence.get('case_id'))}，"
                  f"采集时间 {_esc(evidence.get('captured_at') or time.strftime('%Y-%m-%d %H:%M:%S'))}；"

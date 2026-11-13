@@ -213,7 +213,12 @@ def render_evidence_png(evidence, out_path=None, width=1100):
 
 
 def save_api_evidence(file, req_info, validate_result, error):
-    """落 JSON + 生成证据截图，返回 (json_path, png_path)"""
+    """落证据 JSON，返回 (json_path, None)
+
+    接口单不配截图：证据图里的内容（步骤/接口/请求参数/返回/期望/实际）
+    已经按同样的结构写进提单的重现步骤里了，不需要再挂一张图。
+    （render_evidence_png 保留给需要临时看图排查的场景，不参与自动提单。）
+    """
     evidence = build_api_evidence(file, req_info, validate_result, error)
     os.makedirs(os.path.join(paths.REPORTS, "evidence"), exist_ok=True)
     stamp = time.strftime("%Y%m%d_%H%M%S")
@@ -221,12 +226,7 @@ def save_api_evidence(file, req_info, validate_result, error):
     json_path = os.path.join(paths.REPORTS, "evidence", f"api_{safe}_{stamp}.json")
     evidence["case_ref"] = {"file": os.path.basename(file.get("_file") or ""), "case_id": evidence["case_id"],
                             "name": evidence["title"]}
-    try:
-        png_path = render_evidence_png(evidence, out_path=os.path.join(
-            paths.SCREENSHOTS, f"api_{safe}_{stamp}.png"))
-        evidence["screenshots"] = [png_path]
-    except Exception:                             # noqa: BLE001
-        png_path = None
+    evidence["screenshots"] = []                  # 接口单不带截图
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(evidence, f, ensure_ascii=False, indent=2)
-    return json_path, png_path
+    return json_path, None

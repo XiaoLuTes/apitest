@@ -355,21 +355,24 @@ python tools/evidence_bug.py --evidence reports/evidence/xxx.json --attach-to 97
 | --- | --- | --- |
 | `[前置条件]` | 环境、账号、页面/用例文件 | 运行上下文 |
 | `[步骤]` | 真实操作步骤（含输入的值、点击的元素） | UI：用例执行步骤；API：请求组装/发送/断言 |
-| `[结果]` | 现象 + **接口**（方法、URL、HTTP 状态、请求参数、返回体关键字段） | UI：页面抓包；API：执行器记录 |
+| `[接口]` | 方法 + URL + HTTP 状态 | UI：页面抓包；API：执行器记录 |
+| `[请求参数]` | 等宽代码块（JSON 原样） | 同上 |
+| `[接口返回]` | 等宽代码块（code/msg/data/total/rows 等关键字段） | 同上 |
 | `[期望]` | 人话描述（不是断言原文） | UI：从断言差异还原；API：期望值明细 |
-| `[截图]` | 见本单附件：文件名 | UI：失败页面截图；API：接口证据图（请求+返回+断言渲染） |
+| `[实际]` | 实际现象 | 同上 |
+| `[截图]` | 见本单附件：文件名（**仅 UI 单有**） | UI：失败页面截图 |
 | `[备注]` | 用例ID、采集时间、页面地址 | 证据包 |
 
 **证据是自动采集的，不需要额外准备：**
 
 | 场景 | 触发 | 产物 |
 | --- | --- | --- |
-| 接口用例失败 | `api/common/executor.py` 捕获异常 | `reports/evidence/api_*.json` + `reports/screenshots/api_*.png`（接口证据图） |
+| 接口用例失败 | `api/common/executor.py` 捕获异常 | `reports/evidence/api_*.json`（步骤/接口/请求参数/返回/断言明细）；**接口单不配截图** |
 | UI 用例失败 | `ui/utils/executor.py` 捕获异常 | `reports/evidence/*.json`（步骤/接口/截图路径）+ `reports/screenshots/UI失败-*.png` |
 | 自定义场景 | `ui/utils/evidence.py` 的 `EvidenceRecorder` | 同上（见 `tools/demo_pkg_search.py`） |
 
-没有证据包时（比如只跑过旧结果文件），提单会从结果文件重建：接口信息取 `url`/`data`/`response` 列，
-并把请求+返回+断言差异渲染成一张证据图，**保证每单都有接口和截图**。
+没有证据包时（比如只跑过旧结果文件），提单会从结果文件重建：接口信息取 `url`/`data`/`response` 列。
+接口单的正文就是「接口 / 请求参数 / 接口返回 / 期望 / 实际」这套结构；截图只对 UI 单有意义。
 
 ### 提单过滤规则（默认只提「断言失败 + 稳定复现」）
 

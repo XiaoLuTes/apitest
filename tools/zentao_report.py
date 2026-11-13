@@ -265,18 +265,10 @@ def build_evidence(failure):
         evidence["actual"] = failure.get("reason") or ""
     evidence["env"] = evidence.get("env") or os.getenv("ENV", "测试环境")
 
-    # 保证"每次提单都有截图"：没有真实截图就把接口/断言证据渲染成图
-    if not [p for p in evidence.get("screenshots") or [] if os.path.isfile(p)]:
-        try:
-            from api.common.evidence import render_evidence_png
-            stamp = __import__("time").strftime("%Y%m%d_%H%M%S")
-            safe = re.sub(r"[^\w\-]+", "_", f"{failure.get('case_id')}_evidence")
-            png = os.path.join(paths.SCREENSHOTS, f"{safe}_{stamp}.png")
-            render_evidence_png(evidence, out_path=png)
-            evidence["screenshots"] = [png]
-            print(f"[证据图] 已生成接口证据截图：{png}")
-        except Exception as e:                   # noqa: BLE001
-            print(f"[警告] 生成接口证据截图失败（该单将无截图）：{e}")
+    # 截图规则：UI 单带页面截图；接口单不截图（内容已在 [步骤]/[接口]/[请求参数]/[接口返回] 里）
+    evidence["screenshots"] = [p for p in evidence.get("screenshots") or [] if os.path.isfile(p)]
+    if not evidence["screenshots"] and failure.get("suite") != "api":
+        print("[提示] 该 UI 失败没有采到截图（可能未走 UI 执行器），单子里将没有图")
     return evidence
 
 
