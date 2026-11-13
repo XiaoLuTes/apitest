@@ -121,6 +121,70 @@ def collect_failures(source=None):
 
 
 # ============================================================================
+# 1.5 失败分类 + 稳定性判定（只提"断言失败且稳定复现"的）
+# ============================================================================
+
+# 失败归类规则（顺序敏感：先排除环境/用例问题，再认断言失败）
+ENV_PATTERNS = (
+    r"110106", r"没有访问权限", r"令牌", r"\b401\b", r"\b403\b",
+    r"超时", r"Timeout", r"timed out", r"连接", r"Connection", r"\b50[234]\b", r"网络",
+)
+CASE_PATTERNS = (
+    r"未定义", r"未查询到", r"不存在", r"无法打开", r"JSON", r"extract",
+    r"缺少", r"元素查找超时", r"参数错误",
+)
+ASSERT_PATTERNS = (
+    r"断言", r"期望", r"实际", r"文本不匹配", r"输入验证失败", r"元素应",
+    r"SQL行数", r"字段断言", r"不匹配",
+)
+
+
+def classify(reason):
+    """把失败原因归类：ENV(环境/权限) / CASE(用例或数据问题) / ASSERT(断言失败) / UNKNOWN"""
+    text = str(reason or "")
+    for pat in ENV_PATTERNS:
+        if re.search(pat, text):
+            return "ENV"
+    for pat in CASE_PATTERNS:
+        if re.search(pat, text):
+            return "CASE"
+    for pat in ASSERT_PATTERNS:
+        if re.search(pat, text):
+            return "ASSERT"
+    return "UNKNOWN"
+
+
+def _all_result_files():
+    """最近的结果文件（api xlsx + ui yaml），用于统计"同一用例失败了几次" """
+    api = sorted(glob.glob(os.path.join(paths.RESULTS_API, "*.xlsx")), key=os.path.getmtime)
+    ui = sorted(glob.glob(os.path.join(paths.RESULTS_UI, "*.yaml")), key=os.path.getmtime)
+    return api + ui
+
+
+def history_failure_counts():
+    """统计历史结果里每条用例失败的次数：{(suite, case_id, name): 次数, 'name': 次数}"""
+    counts = {}
+    for path in _all_result_files():
+        try:
+            items = (_read_api_failures(path) if path.lower().endswith((".xlsx", ".xlsm"))
+                     else _read_ui_failures(path))
+        except Exception:                        # noqa: BLE001
+            continue
+        for item in items:
+            key = (item["suite"], item["case_id"], item["name"])
+            counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def annotate(failures, history):
+    """给每条失败补上 分类 / 历史失败次数"""
+    for item in failures:
+        item["class"] = classify(item["reason"])
+        item["repeat"] = history.get((item["suite"], item["case_id"], item["name"]), 1)
+    return failures
+
+
+# ============================================================================
 # 2. 聚类（同根因合成一条缺陷）
 # ============================================================================
 
@@ -156,12 +220,24 @@ def _plain(text):
 
 
 def build_title(item, env_name):
-    """标题风格对齐公司禅道：【来源】模块-页面：单据号/对象，现象"""
+    """标题风格对齐公司禅道：【来源】用例名：现象（只取第一处断言，避免标题过长被截断）"""
     name = _plain(item.get("name") or item.get("case_id"))
     reason = _plain(item.get("reason"))
-    matched = re.search(r"(断言项\[[^\]]+\]失败[^；;]{0,60})", reason)
-    brief = matched.group(1) if matched else reason
-    return f"【自动化-{env_name}】{name}：{brief[:80]}"
+    matched = re.search(
+        r"断言项\[([^\]]+)\]失败\s*\|\s*期望值:\s*([^|]*?)\s*\|\s*实际值:\s*([^|]*?)\s*(?:\||$)",
+        reason)
+    if matched:
+        path, expected, actual = (x.strip() for x in matched.groups())
+        # 去掉类型标注，如 "0 (类型: str)" -> "0"
+        expected = re.sub(r"\s*\(类型:[^)]*\)", "", expected)
+        actual = re.sub(r"\s*\(类型:[^)]*\)", "", actual)
+        brief = f"{path} 期望 {expected} 实际 {actual}"
+    else:
+        brief = reason[:60]
+    reason_count = len(re.findall(r"断言项\[", reason))
+    if reason_count > 1:
+        brief += f" 等{reason_count}处断言"
+    return f"【自动化-{env_name}】{name}：{brief[:90]}"
 
 
 def build_steps_html(item, items, files, env_name):
@@ -221,6 +297,8 @@ def build_draft(clusters, env_name, product, module, assignee, severity, pri, bu
             "涉及用例": "、".join(f"{i['case_id']}{i['name']}" for i in items[:3])
                         + ("…" if len(items) > 3 else ""),
             "重现步骤": build_steps_html(first, items, files, env_name),
+            "判定": "断言失败 + 历史失败 {} 次（稳定复现）".format(
+                max(i.get("repeat", 1) for i in items)),
             "错误指纹": cluster["fingerprint"],
         })
     return drafts
@@ -242,6 +320,7 @@ def write_draft(drafts):
             f"- 影响版本：{d['影响版本']}　反馈者：{d['反馈者'] or '（登录账号）'}　"
             f"指派给：{d['指派给'] or '（默认）'}　关键词：{d['关键词']}",
             f"- 影响用例数：{d['影响用例数']}　涉及用例：{d['涉及用例']}",
+            f"- 判定：{d.get('判定', '')}",
             "",
             "**重现步骤（提交时转成 HTML）**",
             "",
@@ -258,11 +337,11 @@ def write_draft(drafts):
     ws = wb.active
     ws.title = "提单草稿"
     headers = ["序号", "标题", "产品", "模块", "严重程度", "优先级", "类型", "指派给",
-               "影响版本", "反馈者", "关键词", "影响用例数", "涉及用例", "重现步骤", "错误指纹"]
+               "影响版本", "反馈者", "关键词", "影响用例数", "涉及用例", "判定", "重现步骤", "错误指纹"]
     ws.append(headers)
     for d in drafts:
         ws.append([d[h] for h in headers])
-    for idx, width in enumerate([6, 60, 8, 8, 10, 8, 12, 12, 10, 12, 12, 10, 40, 80, 40], start=1):
+    for idx, width in enumerate([6, 60, 8, 8, 10, 8, 12, 12, 10, 12, 12, 10, 40, 34, 80, 40], start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(idx)].width = width
     wb.save(xlsx_path)
     wb.close()
@@ -394,6 +473,12 @@ def main(argv=None):
                         help="影响版本：trunk=主干（默认），也可传 build id")
     parser.add_argument("--keywords", default=os.getenv("ZENTAO_KEYWORDS", DEFAULT_KEYWORDS),
                         help="关键词（默认 自动化）")
+    parser.add_argument("--repeat", type=int, default=int(os.getenv("ZENTAO_REQUIRE_REPEAT", "2")),
+                        help="稳定性要求：同一用例历史失败次数 >= 该值才提单（默认 2，1=放宽）")
+    parser.add_argument("--include-env", action="store_true",
+                        help="同时提交环境类失败（110106/超时/5xx 等，默认不提）")
+    parser.add_argument("--include-case", action="store_true",
+                        help="同时提交用例/数据类失败（变量未定义/不存在 等，默认不提）")
     parser.add_argument("--submit", action="store_true", help="真正提交到禅道（默认只出草稿）")
     parser.add_argument("--yes", action="store_true", help="确认提交（安全开关）")
     parser.add_argument("--delete-on-verify", action="store_true",
@@ -409,7 +494,33 @@ def main(argv=None):
         return 0
 
     env_name = os.getenv("ENV", "测试环境")
-    clusters = cluster(failures)
+
+    # ---- 过滤：只提「断言失败 + 稳定复现」的用例 ----
+    annotate(failures, history_failure_counts())
+    allow_classes = {"ASSERT"} if not args.include_env else {"ASSERT", "ENV"}
+    if args.include_case:
+        allow_classes.add("CASE")
+    accepted, rejected = [], []
+    for item in failures:
+        if item["class"] not in allow_classes:
+            rejected.append((item, f"非断言失败（{item['class']}）"))
+        elif item["repeat"] < args.repeat:
+            rejected.append((item, f"疑似偶发（历史失败 {item['repeat']} 次 < 要求 {args.repeat} 次）"))
+        else:
+            accepted.append(item)
+
+    if rejected:
+        print(f"按规则不提 {len(rejected)} 条：")
+        for item, why in rejected[:10]:
+            print(f"  - {item['case_id']} {item['name'][:30]} → {why}")
+        if len(rejected) > 10:
+            print(f"  ... 其余 {len(rejected) - 10} 条略")
+    if not accepted:
+        print("\n没有符合「断言失败 + 稳定复现」的用例，不生成提单草稿。")
+        print("调整规则：--include-env（含环境问题）/ --include-case（含用例问题）/ --repeat 1（放宽复现次数）")
+        return 0
+
+    clusters = cluster(accepted)
     drafts = build_draft(clusters, env_name, args.product, args.module, args.assignee,
                          args.severity, args.pri, args.bug_type, files,
                          opened_build=args.opened_build, feedback_by=args.feedback_by,

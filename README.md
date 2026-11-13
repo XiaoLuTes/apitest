@@ -318,6 +318,18 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 【自动化-测试环境】管理端｜薪资包管理｜按薪资包ID查询：断言项[$.total]失败 期望值: 1 实际值: 0
 ```
 
+### 提单过滤规则（默认只提「断言失败 + 稳定复现」）
+
+| 判定 | 处理 | 说明 |
+| --- | --- | --- |
+| 断言失败（`ASSERT`） | ✅ 提单 | 错误里出现"断言/期望/实际/文本不匹配"等 |
+| 环境问题（`ENV`） | ❌ 不提 | 110106/401/403/超时/连接不上/5xx |
+| 用例或数据问题（`CASE`） | ❌ 不提 | 变量未定义、未查询到数据、元素查找超时、参数错误 |
+| 其它（`UNKNOWN`） | ❌ 不提 | 归不了类，先人工看 |
+
+稳定性：同一用例需在历史执行结果里失败 ≥ `--repeat` 次（默认 2，即至少两次执行都失败）才算"稳定复现"。
+放宽：`--repeat 1`（当次失败就提）、`--include-env`、`--include-case`。
+
 ### 命令
 
 ```powershell
@@ -336,6 +348,7 @@ python run.py zentao --product 1 --module 393 --assignee Louie.lu --severity 2 -
 - 创建 → 回读 → 删除 **全链路通过**：`module=393 / severity=3 / pri=3 / type=codeerror / openedBuild=主干 / assignedTo=Louie.lu` 均正确落库。
 - **附件走 REST 传不上去**：`POST /api.php/v1/files` 对 png/xlsx/txt 都返回"文件格式不在规定范围内"（服务端限制），所以模板把结果文件路径写进 `[备注]`，需要截图时人工补传。
 - **删除是软删除**：`DELETE /api.php/v1/bugs/{id}` 返回 success，缺陷从列表消失，但 `GET /bugs/{id}` 仍能查到；要彻底清掉到后台回收站处理。
+- **修改要用 PUT**：`PUT /api.php/v1/bugs/{id}` 生效（`PATCH` 返回 200 但改不动），已封装成 `client.update_bug(id, title=..., severity=...)`。
 - 老版本 `api.php` 会话登录也保留了兜底（`api-getsessionid.json` 的 `data` 是字符串的兼容已处理）。
 
 ### 配置项

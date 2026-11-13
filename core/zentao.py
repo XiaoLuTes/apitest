@@ -269,6 +269,17 @@ class ZentaoClient:
             raise ZentaoError(f"提单失败，禅道返回：{result}")
         return bug_id
 
+    def update_bug(self, bug_id, **fields):
+        """修改缺陷（实测：PUT /api.php/v1/bugs/{id} 可用，PATCH 返回 200 但不生效）
+
+        常用字段：title / severity / pri / type / steps / assignedTo / status / module / keywords
+        """
+        self.login()
+        payload = {k: v for k, v in fields.items() if v is not None}
+        if not payload:
+            raise ZentaoError("update_bug 至少需要一个要修改的字段")
+        return self.request("PUT", f"/api.php/v1/bugs/{bug_id}", json_body=payload)
+
     def delete_bug(self, bug_id):
         """删除缺陷（禅道要求对缺陷所属项目有权限，否则返回 400）"""
         self.login()
