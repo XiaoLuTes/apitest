@@ -10,10 +10,13 @@
 
 - 框架：`D:\lu\pycharm\autotest`（接口 `api/` + UI `ui/` + 公共层 `core/`，统一入口 `run.py`）
 - 原始两个框架 `D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright` **保持原样，禁止改动**（只读参考）
+- 资料入口：根目录 `测试数据.md`（账号/数据集/单据号/模板版本）；`docs/项目资料/<项目>/`（接口文档 / 数据库表结构 / 需求文档 / 测试数据，按项目分层，用户会持续补充）
 - 测试环境：业务平台 `https://test-admin.gsrtech.com`；禅道 `http://172.21.100.100:8101/zentao`
 - 执行方式：`python run.py <子命令>`（在 `D:\lu\pycharm\autotest` 下执行）
 
 ## 1. 开工前 30 秒检查
+
+开工先读三处：`测试数据.md`（有没有现成数据可用）、`docs/项目资料/<项目>/` 下的索引、`docs/requirements/` 里同需求的历史拆分（有就接着用）。
 
 ```powershell
 cd D:\lu\pycharm\autotest
@@ -62,7 +65,7 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 - 页面展示、交互流程、元素状态、前端校验提示 → **UI 层**
 - 同一规则两层都值得验时，两层都写（接口验数据、UI 验呈现）
 
-接口层（Excel 驱动）：
+接口层（Excel 驱动）——**写之前先读 `docs/项目资料/<项目>/接口文档/`；没有文档就以实测抓包为准，并回填该目录**：
 - 文件放 `api/testcase/test_<主题>.xlsx`，三个 sheet：`数据准备` / `测试执行` / `数据清理`
 - 列：`case_id, 场景, 场景说明, name, headers, method, url, data, response, extract, validata, result`（建议再加 `备注`、`retry`）
 - **`场景` + `场景说明` 必填且要写实**：场景 = `模块｜子场景` 分组名；场景说明 = `前置 + 操作 + 预期`，把具体单据号/字段值写进去（评审与提单都引用这两列，lint 会对缺失给出告警）
@@ -71,7 +74,7 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 - 详细动作与写法：`README.md` 第 8 节 + `api/README.md`
 - 注册项目：`api/config/setting.py` 的 `TEST_FLIELOADS` 加一行
 
-UI 层（YAML 驱动）：
+UI 层（YAML 驱动）——页面结构与文案参考 `docs/项目资料/<项目>/需求文档/` 里的原型截图：
 - 文件放 `ui/testcases/<项目>/<名>.yaml`；步骤字段：`step_name / element / action / data / expected`
 - 元素名必须**已存在**于 `ui/config/locators/<项目>.yaml`；没有就现场采集（见阶段 2.5）
 - 注册项目：`ui/config/settings.py` 的 `PROJECT_CONFIGS`（`PAGE_NAME` / `TESTCASES_PATH` / `ELEMENT_LOCATORS` / `LOADING_SELECTOR`）
@@ -225,6 +228,7 @@ test_cases:                     # 固定根节点
 5. **先 lint 再执行**；**先草稿再提交**；**先重跑再判定偶发**。
 6. 报告目录（`reports/`）不进 git；`api/variable/extract.yaml` 是运行期产物，也不入库。
 7. 遇到不确定的环境/权限现象：**报告用户**（附错误码与证据），不要改断言去"迁就"环境。
+8. **资料归档**：用户给的接口文档/表结构/PRD 一律放 `docs/项目资料/<项目>/<类别>/`，文件名 `YYYYMMDD-来源-主题.扩展名`，并在该项目 `README.md` 的「已收录清单」补一行；新增数据/单据号同步登记到根目录 `测试数据.md`（失效的标 `❌失效` 而不是删行）。
 
 ## 5. 常见任务索引
 
@@ -267,7 +271,10 @@ test_cases:                     # 固定根节点
 | `api/README.md` | 接口用例写法（列定义、动作表、断言、变量、薪资包相关） |
 | `ui/README.md` | UI 用例写法（YAML 步骤、动作、定位、扫码登录） |
 | `api/variable/all.yaml` | 接口全局变量（`headers_admin` / `headers_user` 等） |
-| `docs/requirements/` | 需求拆分产物（测试点清单） |
+| `docs/requirements/` | 需求拆分产物（按 `docs/需求拆分模板.md` 填） |
+| `测试数据.md` | 账号、数据集、单据号、模板版本、常用表（造数前先看） |
+| `docs/项目资料/<项目>/` | 接口文档 / 数据库表结构 / 需求文档 / 测试数据（用户持续补充） |
+| `docs/需求拆分模板.md` / `docs/用例编写模板.md` | 阶段 1 / 阶段 2 的产物模板 |
 
 ## 8. 交付汇报模板（每次任务结束按这个回）
 
