@@ -297,44 +297,61 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 
 ## 10. 禅道提单（执行结果 → 缺陷）
 
-已经封成框架能力，**配置全放 `.env`，代码只写一次**：
+已接通公司禅道（**开源版 22.6**，`http://172.21.100.100:8101/zentao`），提单模板按提单页实测字段定制：
 
-| 文件 | 作用 |
-| --- | --- |
-| `core/zentao.py` | 禅道客户端（v18+ REST 优先，自动回落老版本 `api.php` 会话） |
-| `tools/zentao_report.py` | 读执行结果 → 聚合失败 → 生成草稿 / 提交 |
-| `run.py zentao ...` | 命令行入口 |
+| 字段 | 取值 | 来源 |
+| --- | --- | --- |
+| 所属产品 | `1` — GSR OMNI | 禅道唯一产品 |
+| 所属模块 | `393` — `/Payroll&结算` | 提单页 URL `moduleID=393` |
+| 严重程度 | `3` — 一般 | 提单页默认值 |
+| 优先级 | `3` — 中 | 提单页默认值 |
+| Bug 类型 | `codeerror` — 代码错误 | 公司存量缺陷绝大多数是它 |
+| 影响版本 | `["trunk"]` — 主干 | **必须传数组**，传 `0`/`"0"` 会报"影响版本不能为空" |
+| 反馈者 | 登录账号（`Louie.lu`） | 提单页必填项 |
+| 当前指派 | `ZENTAO_ASSIGNEE`（默认 `Louie.lu`） | 提单页必填项 |
+| 关键词 | `自动化` | 便于日后检索自动化提单 |
+| 重现步骤 | HTML 富文本 | 沿用公司模板 `[前置条件]/[步骤]/[结果]/[期望]/[备注]` |
 
-```powershell
-python run.py zentao --probe                 # 探测：登录态、当前用户、产品/模块/用户端点是否可用
-python run.py zentao                         # 取最近一次执行结果 → 生成提单草稿（不提交）
-python run.py zentao --from reports/results/api/xxx.xlsx
-python run.py zentao --product 3 --module 12 --assignee zhangsan --severity 2 --pri 2
-python run.py zentao --submit --yes           # 真正提交（需要 .env 配置齐全）
+标题风格也对齐公司习惯（`【来源】模块-页面：对象，现象`）：
+
+```
+【自动化-测试环境】管理端｜薪资包管理｜按薪资包ID查询：断言项[$.total]失败 期望值: 1 实际值: 0
 ```
 
-行为约定：
+### 命令
 
-- **默认只出草稿**：`reports/zentao/draft_<时间戳>.md` + `.xlsx`，你核对后再说提交。
-- **同根因聚合**：错误文本抹掉数字/id/时间戳后做指纹，一条根因只出一条缺陷（备注里列出合并的用例）。
-- **安全闸**：必须 `--yes` 或 `.env` 的 `ZENTAO_AUTO_SUBMIT=true` 才会真的调接口提单。
-- **不依赖禅道也能用**：没配禅道时草稿照样生成，草稿里的标题/重现步骤可以直接手工贴进禅道。
+```powershell
+python run.py zentao --probe                          # 探测：登录/身份/产品/默认字段
+python run.py zentao                                  # 最近一次执行结果 → 草稿（不提交）
+python run.py zentao --from reports/results/api/x.xlsx
+python run.py zentao --submit --yes                    # 核对草稿后真提交
+python run.py zentao --submit --yes --delete-on-verify # 链路自检：提交→回读→删除
+python run.py zentao --product 1 --module 393 --assignee Louie.lu --severity 2 --pri 2
+```
 
-### 需要提供的配置（`.env`）
+产物：`reports/zentao/draft_<时间戳>.md`（人看）+ `.xlsx`（核对字段）。
 
-| 键 | 说明 | 必填 |
+### 实测结论（2026-11-13）
+
+- 创建 → 回读 → 删除 **全链路通过**：`module=393 / severity=3 / pri=3 / type=codeerror / openedBuild=主干 / assignedTo=Louie.lu` 均正确落库。
+- **附件走 REST 传不上去**：`POST /api.php/v1/files` 对 png/xlsx/txt 都返回"文件格式不在规定范围内"（服务端限制），所以模板把结果文件路径写进 `[备注]`，需要截图时人工补传。
+- **删除是软删除**：`DELETE /api.php/v1/bugs/{id}` 返回 success，缺陷从列表消失，但 `GET /bugs/{id}` 仍能查到；要彻底清掉到后台回收站处理。
+- 老版本 `api.php` 会话登录也保留了兜底（`api-getsessionid.json` 的 `data` 是字符串的兼容已处理）。
+
+### 配置项
+
+| 键 | 公司环境取值 | 说明 |
 | --- | --- | --- |
-| `ZENTAO_URL` | 禅道根地址，**不要带 `/api.php`**（如 `https://zentao.example.com`） | 是 |
-| `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` | 账号密码（建议专用机器人账号，需"提Bug"权限） | 与 token 二选一 |
-| `ZENTAO_TOKEN` | 已有 token 时直接填，免登录 | 与账号密码二选一 |
-| `ZENTAO_PRODUCT` | 产品 id（`--probe` 会列出来） | 提单必填 |
-| `ZENTAO_MODULE` | 模块 id（0 = 根模块） | 可选 |
-| `ZENTAO_ASSIGNEE` | 默认指派给（禅道账号名，不是姓名） | 可选 |
-| `ZENTAO_SEVERITY` / `ZENTAO_PRI` | 严重程度 / 优先级，1~4（1 最高） | 可选（默认 3） |
-| `ZENTAO_TYPE` | 缺陷类型：`codeerror` / `performance` / `standard` / `automation` / `others` | 可选 |
-| `ZENTAO_OPENED_BUILD` | 影响版本 id，留空用 `trunk` | 可选 |
-| `ZENTAO_VERIFY_SSL` | 自签证书环境设 `false` | 可选 |
-| `ZENTAO_AUTO_SUBMIT` | 是否允许免 `--yes` 自动提交（默认 `false`） | 可选 |
+| `ZENTAO_URL` | `http://172.21.100.100:8101/zentao` | 不要带 `/api.php` |
+| `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` | `Louie.lu` / 见 .env | 建议换成专用机器人账号 |
+| `ZENTAO_PRODUCT` | `1` | 所属产品 |
+| `ZENTAO_MODULE` | `393` | 所属模块 |
+| `ZENTAO_ASSIGNEE` | `Louie.lu` | 当前指派（账号名） |
+| `ZENTAO_SEVERITY` / `ZENTAO_PRI` | `3` / `3` | 严重程度 / 优先级 |
+| `ZENTAO_TYPE` | `codeerror` | 缺陷类型 |
+| `ZENTAO_OPENED_BUILD` | `trunk` | 影响版本（主干） |
+| `ZENTAO_KEYWORDS` | `自动化` | 关键词 |
+| `ZENTAO_AUTO_SUBMIT` | `false` | 是否允许免 `--yes` 自动提交 |
 
 ### 在代码里当方法用
 
@@ -342,11 +359,13 @@ python run.py zentao --submit --yes           # 真正提交（需要 .env 配�
 from core.zentao import ZentaoClient
 
 zt = ZentaoClient.from_env()
-zt.whoami()                      # 连通性 + 身份
-zt.products()                    # → [{'id': 3, 'name': '...'}, ...]
-zt.modules(3)                     # → 模块树
-zt.create_bug(title="[自动化] xxx 失败", steps="重现步骤...", product=3, module=12,
-              severity=2, pri=2, assigned_to="zhangsan", attachments=["reports/xxx.xlsx"])
+zt.whoami(); zt.products(); zt.users()
+bug_id = zt.create_bug(
+    title="【自动化-测试环境】xxx 失败：现象",
+    steps="<p><strong>[步骤]</strong></p><p>1. ...</p><p><strong>[结果]</strong></p><p>...</p>",
+    product=1, module=393, severity=3, pri=3, bug_type="codeerror",
+    assigned_to="Louie.lu", feedback_by="Louie.lu", opened_build="trunk", keywords="自动化")
+zt.delete_bug(bug_id)     # 软删除（列表消失，后台可彻底删）
 ```
 
 ## 11. 已知问题 / 环境注意
@@ -360,6 +379,8 @@ zt.create_bug(title="[自动化] xxx 失败", steps="重现步骤...", product=3
    > 这三处如需回归验证，得跑对应的招聘平台全流程（会真实新建岗位/编制）。
 4. **token 约 2 小时过期**，需要定期更新 `.env`（或跑一次有头 UI 用例扫码刷新）。
 5. `test_test.xlsx`（调试项目）里有空行/空 sheet，lint 会告警，不影响其它项目。
+6. 禅道附件 REST 上传被服务端限制（png/xlsx 都拒），自动化提单暂不带附件。
+7. 禅道 REST 删除是软删除，验证用的测试单请到后台回收站彻底清理。
 
 ---
 

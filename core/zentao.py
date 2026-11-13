@@ -132,7 +132,14 @@ class ZentaoClient:
     def _login_legacy(self):
         """禅道 <18 / 未开 REST：先取 sessionID，再调 api.php 登录"""
         info = self.request("GET", "/api-getsessionid.json")
-        sid = ((info or {}).get("data") or {}).get("sessionID")
+        data = (info or {}).get("data") or {}
+        if isinstance(data, str):               # 部分版本把 data 再套一层 JSON 字符串
+            import json as _json
+            try:
+                data = _json.loads(data)
+            except ValueError:
+                data = {}
+        sid = (data or {}).get("sessionID")
         if not sid:
             raise ZentaoError(f"老版本登录失败：未取到 sessionID（{info}）")
         payload = self.request(
@@ -156,7 +163,11 @@ class ZentaoClient:
         return (payload or {}).get("products") or payload or []
 
     def modules(self, product_id):
-        """产品下的模块列表（取 module id 用；不同版本端点略有差异，失败会抛 ZentaoError）"""
+        """产品下的模块列表（取 module id 用）
+
+        注意：公司禅道（开源版 22.6）没有暴露模块 REST 端点（/products/{id}/modules 返回 404），
+        直接返回空列表并在提示里说明 —— 模块 id 请从提单页 URL 里取（moduleID=393）。
+        """
         self.login()
         for path in (f"/api.php/v1/products/{product_id}/modules",
                      f"/api.php/v1/products/{product_id}/tree"):
@@ -166,8 +177,7 @@ class ZentaoClient:
                 continue
             data = payload.get("modules") if isinstance(payload, dict) else None
             return data or (payload.get("data") if isinstance(payload, dict) else payload) or []
-        raise ZentaoError(f"取模块失败：禅道 {self.url} 不支持上述模块端点，"
-                          f"可先用 `python run.py zentao --probe` 看支持哪些接口")
+        return []
 
     def users(self):
         self.login()
@@ -185,24 +195,27 @@ class ZentaoClient:
         return file_id
 
     def create_bug(self, title, steps, product, module=0, severity=3, pri=3, bug_type="codeerror",
-                   assigned_to="", opened_build="", story=0, keywords="", attachments=None,
-                   extra=None):
-        """提一个缺陷
+                   assigned_to="", feedback_by="", opened_build=0, keywords="", plan=0, story=0,
+                   task=0, mailto=None, attachments=None, extra=None):
+        """提一个缺陷（字段名对齐公司禅道提单页：禅道开源版 22.6 实测）
 
-        :param title: 标题（必填）
-        :param steps: 重现步骤（纯文本，支持禅道 markdown/富文本）
-        :param product: 产品 id
-        :param module: 模块 id（0 = 根模块）
-        :param severity: 严重程度 1~4（1 最严重）
-        :param pri: 优先级 1~4（1 最高）
-        :param bug_type: codeerror(代码错误) / config(配置) / install(安装) / security(安全) /
-                         performance(性能) / standard(标准规范) / automation(自动化) / designdefect(设计缺陷) /
-                         others(其他)
-        :param assigned_to: 指派给（禅道账号名，留空 = 默认）
-        :param opened_build: 影响版本 id（可留空）
-        :param story: 关联需求 id（可留空/0）
-        :param attachments: 本地文件路径列表（会先上传再关联）
-        :param extra: 其他原样透传字段（不同禅道版本字段有差异时用它兜底）
+        :param title: Bug标题（必填）
+        :param steps: 重现步骤，HTML 字符串（禅道默认模板：[步骤] / [结果] / [期望]）
+        :param product: 所属产品 id（必填，公司环境 = 1 GSR OMNI）
+        :param module: 所属模块 id（必填，公司环境自动化提单用 393 = /Payroll&结算）
+        :param severity: 严重程度 1~4（3=一般，默认 3）
+        :param pri: 优先级 1~4（3=中，默认 3）
+        :param bug_type: codeerror(代码错误，默认) / codeimprovement(代码改进) / others(其他) ...
+        :param assigned_to: 当前指派（禅道账号名，如 "Louie.lu"）
+        :param feedback_by: 反馈者（提单页必填，留空默认用登录账号）
+        :param opened_build: 影响版本（0 = 默认/主干；也可传 build id 或 id 列表）
+        :param keywords: 关键词（建议填 "自动化" 便于检索）
+        :param plan: 所属计划 id（0 = 不关联）
+        :param story: 相关需求 id（0 = 不关联）
+        :param task: 相关任务 id（0 = 不关联）
+        :param mailto: 抄送给（账号名列表）
+        :param attachments: 本地图片路径列表（禅道只收图片：png/jpg/gif 等，xlsx 会被拒）
+        :param extra: 其他原样透传字段
         """
         self.login()
         payload = {
@@ -213,19 +226,31 @@ class ZentaoClient:
             "severity": int(severity),
             "pri": int(pri),
             "type": bug_type,
-            "openedBuild": opened_build or "trunk",
+            # 公司禅道（22.6）要求影响版本是数组，传标量会报『影响版本』不能为空
+            "openedBuild": (opened_build if isinstance(opened_build, (list, tuple))
+                            else [opened_build if opened_build not in (None, "") else 0]),
+            "feedbackBy": feedback_by or self.account,
             "keywords": keywords,
         }
         if assigned_to:
             payload["assignedTo"] = assigned_to
+        if plan:
+            payload["plan"] = int(plan)
         if story:
             payload["story"] = int(story)
+        if task:
+            payload["task"] = int(task)
+        if mailto:
+            payload["mailto"] = mailto if isinstance(mailto, list) else [mailto]
         if attachments:
             ids = []
             for path in attachments:
                 try:
                     ids.append(self.upload_file(path))
-                except ZentaoError:
+                except ZentaoError as e:
+                    # 公司禅道服务端把附件类型限制得很死（png/xlsx/txt 都报"格式不在规定范围内"），
+                    # 提不了附件不阻断提单：把文件路径写进重现步骤里，人工补传或用 UI 方式提单。
+                    print(f"[附件跳过] {path}：{e}")
                     continue
             if ids:
                 payload["files"] = ids
@@ -243,3 +268,8 @@ class ZentaoClient:
         if not bug_id:
             raise ZentaoError(f"提单失败，禅道返回：{result}")
         return bug_id
+
+    def delete_bug(self, bug_id):
+        """删除缺陷（禅道要求对缺陷所属项目有权限，否则返回 400）"""
+        self.login()
+        return self.request("DELETE", f"/api.php/v1/bugs/{bug_id}", expect_json=False)

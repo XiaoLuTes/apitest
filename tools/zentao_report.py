@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""执行结果 → 禅道提单（草稿默认，--submit 才真提）
+"""执行结果 → 禅道提单（默认只出草稿，--submit 才真提）
+
+模板已对齐公司禅道（开源版 22.6，http://172.21.100.100:8101/zentao）：
+    所属产品 = GSR OMNI(1)      所属模块 = /Payroll&结算(393)
+    严重程度 = 3(一般)          优先级 = 3(中)        类型 = codeerror(代码错误)
+    影响版本 = ["trunk"]（主干） 反馈者 = 登录账号      当前指派 = ZENTAO_ASSIGNEE
+    重现步骤 = HTML 富文本，[前置条件]/[步骤]/[结果]/[期望]/[备注]
+    标题      = 【自动化-<环境>】<用例名>：<现象摘要>
 
 用法：
-    python run.py zentao --probe                          # 探测禅道连通性/接口形态/产品模块账号
-    python run.py zentao                                  # 从最近一次执行结果生成提单草稿（不提交）
-    python run.py zentao --from reports/results/api/xxx.xlsx
-    python run.py zentao --product 3 --module 12          # 指定产品/模块（否则取 .env）
-    python run.py zentao --submit --yes                   # 真正提交（需要 .env 配置齐全）
+    python run.py zentao --probe                        # 探测连通性/身份/产品
+    python run.py zentao                                # 最近一次结果 → 草稿
+    python run.py zentao --from reports/results/api/x.xlsx
+    python run.py zentao --submit --yes                 # 真提交（草稿核对后）
+    python run.py zentao --submit --yes --delete-on-verify   # 验证用：提交后立刻删除
 
-产出：
-    reports/zentao/draft_<时间戳>.md      人看的草稿（标题/原因/复现步骤/建议字段）
-    reports/zentao/draft_<时间戳>.xlsx    可直接核对字段的表格
-
-设计原则：
-    1. 默认只生成草稿，绝不自动提单（避免把环境问题刷进缺陷库）
-    2. 相同"错误指纹"的失败聚合成一条缺陷，避免一条根因报 N 个 bug
-    3. 每条草稿都带执行环境、用例ID、原始错误文本、结果文件路径，方便开发定位
+已知限制（实测）：
+    附件走 REST 上传被服务端拒（png/xlsx/txt 都报"文件格式不在规定范围内"），
+    因此模板把结果文件路径写进 [备注]，需要贴图时人工补或改用 UI 方式提单。
 """
 import argparse
 import glob
@@ -36,6 +38,7 @@ from core.env import load_env  # noqa: E402
 load_env()
 
 DRAFT_DIR = os.path.join(paths.REPORTS, "zentao")
+DEFAULT_KEYWORDS = "自动化"
 
 
 # ============================================================================
@@ -44,7 +47,6 @@ DRAFT_DIR = os.path.join(paths.REPORTS, "zentao")
 
 
 def _read_api_failures(xlsx_path):
-    """从接口结果文件（源用例副本 + result 列）里取失败用例"""
     import openpyxl
 
     failures = []
@@ -68,7 +70,7 @@ def _read_api_failures(xlsx_path):
                     "sheet": sheet,
                     "case_id": "" if case_id is None else str(case_id),
                     "name": "" if name is None else str(name),
-                    "reason": result.replace("失败：", "").strip(),
+                    "reason": result.replace("失败：", "").replace("失败:", "").strip(),
                 })
     finally:
         wb.close()
@@ -76,7 +78,6 @@ def _read_api_failures(xlsx_path):
 
 
 def _read_ui_failures(yaml_path):
-    """从 UI 结果文件（test_cases[].result）里取失败用例"""
     import yaml
 
     with open(yaml_path, "r", encoding="utf-8") as f:
@@ -92,13 +93,12 @@ def _read_ui_failures(yaml_path):
             "sheet": "",
             "case_id": str(case.get("id") or ""),
             "name": str(case.get("name") or ""),
-            "reason": result.replace("失败:", "").replace("失败：", "").strip(),
+            "reason": result.replace("失败：", "").replace("失败:", "").strip(),
         })
     return failures
 
 
 def latest_result_files():
-    """找最近一次执行的接口/UI 结果文件"""
     api = sorted(glob.glob(os.path.join(paths.RESULTS_API, "*.xlsx")), key=os.path.getmtime)
     ui = sorted(glob.glob(os.path.join(paths.RESULTS_UI, "*.yaml")), key=os.path.getmtime)
     return (api[-1] if api else None), (ui[-1] if ui else None)
@@ -126,7 +126,6 @@ def collect_failures(source=None):
 
 
 def fingerprint(reason):
-    """错误指纹：抹掉数字、id、时间戳等易变内容，保留稳定特征"""
     text = str(reason or "")
     text = re.sub(r"\b[0-9a-f]{8,}\b", "<id>", text, flags=re.I)
     text = re.sub(r"\d+", "<n>", text)
@@ -138,48 +137,92 @@ def cluster(failures):
     groups = {}
     for item in failures:
         groups.setdefault(fingerprint(item["reason"]), []).append(item)
-    clusters = []
-    for fp, items in groups.items():
-        clusters.append({"fingerprint": fp, "items": items})
+    clusters = [{"fingerprint": fp, "items": items} for fp, items in groups.items()]
     clusters.sort(key=lambda c: -len(c["items"]))
     return clusters
 
 
 # ============================================================================
-# 3. 生成草稿
+# 3. 按公司禅道模板生成草稿
 # ============================================================================
 
 
-def build_draft(clusters, env_name, product, module, assignee, severity, pri, bug_type, files):
+def _esc(text):
+    return (str(text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _plain(text):
+    return re.sub(r"\s+", " ", str(text or "")).strip()
+
+
+def build_title(item, env_name):
+    """标题风格对齐公司禅道：【来源】模块-页面：单据号/对象，现象"""
+    name = _plain(item.get("name") or item.get("case_id"))
+    reason = _plain(item.get("reason"))
+    matched = re.search(r"(断言项\[[^\]]+\]失败[^；;]{0,60})", reason)
+    brief = matched.group(1) if matched else reason
+    return f"【自动化-{env_name}】{name}：{brief[:80]}"
+
+
+def build_steps_html(item, items, files, env_name):
+    """重现步骤：公司模板 [前置条件]/[步骤]/[结果]/[期望]/[备注]（HTML）"""
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    reason_lines = [line for line in str(item["reason"]).splitlines() if line.strip()]
+    reason_html = "<br/>".join(_esc(line) for line in reason_lines) or "（无错误详情）"
+    # [期望] 只取「期望值」，不要把整行错误重复一遍
+    expects = []
+    for line in reason_lines:
+        matched = re.search(r"断言项\[([^\]]+)\][^|]*\|?\s*期望值:\s*([^|]+)", line)
+        if matched:
+            expects.append(f"{matched.group(1).strip()} 期望 {matched.group(2).strip()}")
+        elif "期望" in line:
+            expects.append(_plain(line)[:200])
+    expect_html = "<br/>".join(_esc(item) for item in expects[:10]) \
+        or "与用例断言一致（详见用例与结果文件）"
+    merged = "、".join(f"{i['case_id']} {i['name']}" for i in items[:10])
+
+    return "".join([
+        "<p><strong>[前置条件]</strong></p>",
+        f"<p>自动化用例稳定复现，无需人工准备数据；执行环境：{_esc(env_name)}</p>",
+        "<p><strong>[步骤]</strong></p>",
+        f"<p>1. 执行用例：{_esc(item['case_id'])} {_esc(item['name'])}</p>",
+        f"<p>2. 用例文件：{_esc(item['source'])}（{_esc(item.get('sheet') or item['suite'])}）</p>",
+        f"<p>3. 执行时间：{ts}</p>",
+        "<p><strong>[结果]</strong></p>",
+        f"<p>{reason_html}</p>",
+        "<p><strong>[期望]</strong></p>",
+        f"<p>{expect_html}</p>",
+        "<p><strong>[备注]</strong></p>",
+        f"<p>同根因用例 {len(items)} 条：{_esc(merged)}</p>",
+        f"<p>结果文件：{_esc('; '.join(os.path.basename(f) for f in files))}"
+        f"（reports/results/ 下可查；API 附件上传被禅道限制，如需截图请人工补传）</p>",
+    ])
+
+
+def build_draft(clusters, env_name, product, module, assignee, severity, pri, bug_type, files,
+                opened_build="trunk", feedback_by="", keywords=DEFAULT_KEYWORDS):
     drafts = []
     for index, cluster in enumerate(clusters, start=1):
         items = cluster["items"]
         first = items[0]
-        titles = "、".join(f"{i['case_id']}{i['name']}" for i in items[:3])
-        short_reason = re.sub(r"\s+", " ", first["reason"])[:80]
-        draft = {
+        drafts.append({
             "序号": index,
-            "标题": f"[自动化][{env_name}] {first['name'] or first['case_id']} 失败：{short_reason}",
+            "标题": build_title(first, env_name),
             "产品": product,
             "模块": module,
             "严重程度": severity,
             "优先级": pri,
             "类型": bug_type,
             "指派给": assignee,
+            "影响版本": opened_build,
+            "反馈者": feedback_by,
+            "关键词": keywords,
             "影响用例数": len(items),
-            "涉及用例": titles + ("…" if len(items) > 3 else ""),
-            "重现步骤": (
-                f"【执行环境】{env_name}\n"
-                f"【用例集】{first['source']}（{first['sheet'] or first['suite']}）\n"
-                f"【失败用例】\n" + "\n".join(
-                    f"  - {i['case_id']} {i['name']}" for i in items[:10]) + "\n"
-                f"【错误信息】\n{first['reason']}\n"
-                f"【结果文件】{'; '.join(os.path.basename(f) for f in files)}\n"
-                f"【备注】同根因用例已合并，共 {len(items)} 条"
-            ),
+            "涉及用例": "、".join(f"{i['case_id']}{i['name']}" for i in items[:3])
+                        + ("…" if len(items) > 3 else ""),
+            "重现步骤": build_steps_html(first, items, files, env_name),
             "错误指纹": cluster["fingerprint"],
-        }
-        drafts.append(draft)
+        })
     return drafts
 
 
@@ -194,11 +237,15 @@ def write_draft(drafts):
         lines += [
             f"## {d['序号']}. {d['标题']}",
             "",
-            f"- 产品：{d['产品']}　模块：{d['模块']}　严重程度：{d['严重程度']}　优先级：{d['优先级']}　类型：{d['类型']}",
-            f"- 指派给：{d['指派给'] or '（默认）'}　影响用例数：{d['影响用例数']}",
-            f"- 涉及用例：{d['涉及用例']}",
+            f"- 产品：{d['产品']}　模块：{d['模块']}　严重程度：{d['严重程度']}　"
+            f"优先级：{d['优先级']}　类型：{d['类型']}",
+            f"- 影响版本：{d['影响版本']}　反馈者：{d['反馈者'] or '（登录账号）'}　"
+            f"指派给：{d['指派给'] or '（默认）'}　关键词：{d['关键词']}",
+            f"- 影响用例数：{d['影响用例数']}　涉及用例：{d['涉及用例']}",
             "",
-            "```",
+            "**重现步骤（提交时转成 HTML）**",
+            "",
+            "```html",
             d["重现步骤"],
             "```",
             "",
@@ -211,11 +258,11 @@ def write_draft(drafts):
     ws = wb.active
     ws.title = "提单草稿"
     headers = ["序号", "标题", "产品", "模块", "严重程度", "优先级", "类型", "指派给",
-               "影响用例数", "涉及用例", "重现步骤", "错误指纹"]
+               "影响版本", "反馈者", "关键词", "影响用例数", "涉及用例", "重现步骤", "错误指纹"]
     ws.append(headers)
     for d in drafts:
         ws.append([d[h] for h in headers])
-    for idx, width in enumerate([6, 60, 8, 8, 10, 8, 12, 12, 10, 50, 80, 40], start=1):
+    for idx, width in enumerate([6, 60, 8, 8, 10, 8, 12, 12, 10, 12, 12, 10, 40, 80, 40], start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(idx)].width = width
     wb.save(xlsx_path)
     wb.close()
@@ -245,7 +292,6 @@ def probe():
         print(f"登录结果：成功（mode={client.mode}）")
     except ZentaoError as e:
         print(f"登录结果：失败 → {e}")
-        print("\n排查建议：1) 地址是否带 /api.php 2) 版本是否 ≥18 3) 账号是否有 API 权限")
         return 2
 
     for label, func in (("当前用户 /api.php/v1/user", client.whoami),
@@ -256,21 +302,22 @@ def probe():
             if isinstance(data, dict):
                 data = data.get("profile") or data.get("user") or data
             sample = data[:3] if isinstance(data, list) else data
-            print(f"{label}：可用 → {json.dumps(sample, ensure_ascii=False)[:300]}")
+            print(f"{label}：可用 → {json.dumps(sample, ensure_ascii=False)[:260]}")
         except ZentaoError as e:
             print(f"{label}：不可用 → {e}")
 
     product = os.getenv("ZENTAO_PRODUCT", "").strip()
     if product:
         try:
-            print(f"模块列表（产品 {product}）：可用 → "
-                  f"{json.dumps(client.modules(product), ensure_ascii=False)[:300]}")
+            mods = client.modules(product)
+            print(f"模块列表（产品 {product}）：{mods if mods else '该版本无模块 REST 端点，模块 id 从提单页 URL 取'}")
         except ZentaoError as e:
             print(f"模块列表（产品 {product}）：不可用 → {e}")
-    else:
-        print("模块列表：跳过（未配置 ZENTAO_PRODUCT）")
-
-    print("\n提示：提单前建议先用默认草稿模式核对字段，确认无误再加 --submit --yes")
+    print("\n提单默认值：产品 {} / 模块 {} / 严重程度 {} / 优先级 {} / 类型 {} / 影响版本 {}".format(
+        os.getenv("ZENTAO_PRODUCT", "1"), os.getenv("ZENTAO_MODULE", "393"),
+        os.getenv("ZENTAO_SEVERITY", "3"), os.getenv("ZENTAO_PRI", "3"),
+        os.getenv("ZENTAO_TYPE", "codeerror"), os.getenv("ZENTAO_OPENED_BUILD", "trunk")))
+    print("提示：先不带 --submit 出草稿核对，再 --submit --yes 提交")
     return 0
 
 
@@ -294,6 +341,7 @@ def submit(drafts, args, files):
         print(f"[提单失败] {e}")
         return 2
 
+    submitted = 0
     created = []
     for d in drafts:
         try:
@@ -301,31 +349,55 @@ def submit(drafts, args, files):
                 title=d["标题"], steps=d["重现步骤"],
                 product=args.product, module=args.module,
                 severity=args.severity, pri=args.pri, bug_type=args.bug_type,
-                assigned_to=args.assignee, attachments=files,
+                assigned_to=args.assignee, feedback_by=args.feedback_by,
+                opened_build=args.opened_build, keywords=args.keywords,
             )
-            created.append((bug_id, d["标题"]))
+            submitted += 1
             print(f"[已提交] #{bug_id} {d['标题']}")
+            print(f"          {client.url}/bug-view-{bug_id}.html")
+            if args.delete_on_verify:
+                try:
+                    view = client.request("GET", f"/api.php/v1/bugs/{bug_id}")
+                    print("          [回读字段] " + json.dumps({
+                        k: view.get(k) for k in ("module", "severity", "pri", "type",
+                                                  "keywords", "openedBuild", "assignedTo")
+                    }, ensure_ascii=False))
+                    client.delete_bug(bug_id)
+                    print(f"          [验证模式] 已删除 #{bug_id}")
+                except ZentaoError as e:
+                    print(f"          回读/删除失败：{e}")
+                    created.append(bug_id)
+            else:
+                created.append(bug_id)
         except ZentaoError as e:
             print(f"[提交失败] {d['标题']} → {e}")
-    print(f"\n提交完成：成功 {len(created)} / 共 {len(drafts)}")
-    return 0 if len(created) == len(drafts) else 1
+    print(f"\n提交完成：成功 {submitted} / 共 {len(drafts)}")
+    return 0 if submitted == len(drafts) else 1
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="执行结果 → 禅道提单（默认只生成草稿）")
     parser.add_argument("--probe", action="store_true", help="探测禅道连通性/接口形态")
     parser.add_argument("--from", dest="source", default="", help="指定结果文件（默认取最新）")
-    parser.add_argument("--product", default=os.getenv("ZENTAO_PRODUCT", "0"), help="产品 id")
-    parser.add_argument("--module", default=os.getenv("ZENTAO_MODULE", "0"), help="模块 id")
-    parser.add_argument("--assignee", default=os.getenv("ZENTAO_ASSIGNEE", ""), help="指派给（账号名）")
+    parser.add_argument("--product", default=os.getenv("ZENTAO_PRODUCT", "1"), help="所属产品 id")
+    parser.add_argument("--module", default=os.getenv("ZENTAO_MODULE", "393"), help="所属模块 id")
+    parser.add_argument("--assignee", default=os.getenv("ZENTAO_ASSIGNEE", ""), help="当前指派（账号名）")
+    parser.add_argument("--feedback-by", default=os.getenv("ZENTAO_FEEDBACK", ""),
+                        help="反馈者（默认登录账号）")
     parser.add_argument("--severity", type=int, default=int(os.getenv("ZENTAO_SEVERITY", "3")),
-                        help="严重程度 1~4（1 最严重）")
+                        help="严重程度 1~4（3=一般）")
     parser.add_argument("--pri", type=int, default=int(os.getenv("ZENTAO_PRI", "3")),
-                        help="优先级 1~4（1 最高）")
+                        help="优先级 1~4（3=中）")
     parser.add_argument("--type", dest="bug_type", default=os.getenv("ZENTAO_TYPE", "codeerror"),
-                        help="缺陷类型：codeerror/performance/standard/automation/others...")
+                        help="类型：codeerror/codeimprovement/others...")
+    parser.add_argument("--opened-build", default=os.getenv("ZENTAO_OPENED_BUILD", "trunk"),
+                        help="影响版本：trunk=主干（默认），也可传 build id")
+    parser.add_argument("--keywords", default=os.getenv("ZENTAO_KEYWORDS", DEFAULT_KEYWORDS),
+                        help="关键词（默认 自动化）")
     parser.add_argument("--submit", action="store_true", help="真正提交到禅道（默认只出草稿）")
     parser.add_argument("--yes", action="store_true", help="确认提交（安全开关）")
+    parser.add_argument("--delete-on-verify", action="store_true",
+                        help="验证用：提交成功后立即删除该单")
     args = parser.parse_args(argv)
 
     if args.probe:
@@ -339,7 +411,9 @@ def main(argv=None):
     env_name = os.getenv("ENV", "测试环境")
     clusters = cluster(failures)
     drafts = build_draft(clusters, env_name, args.product, args.module, args.assignee,
-                         args.severity, args.pri, args.bug_type, files)
+                         args.severity, args.pri, args.bug_type, files,
+                         opened_build=args.opened_build, feedback_by=args.feedback_by,
+                         keywords=args.keywords)
     md_path, xlsx_path = write_draft(drafts)
     print(f"失败用例 {len(failures)} 条，按根因聚合成 {len(drafts)} 条缺陷草稿")
     print(f"  Markdown：{md_path}")
