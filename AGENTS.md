@@ -64,7 +64,8 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 
 接口层（Excel 驱动）：
 - 文件放 `api/testcase/test_<主题>.xlsx`，三个 sheet：`数据准备` / `测试执行` / `数据清理`
-- 列：`case_id, name, headers, method, url, data, response, extract, validata, result`（建议再加 `备注`、`retry`）
+- 列：`case_id, 场景, 场景说明, name, headers, method, url, data, response, extract, validata, result`（建议再加 `备注`、`retry`）
+- **`场景` + `场景说明` 必填且要写实**：场景 = `模块｜子场景` 分组名；场景说明 = `前置 + 操作 + 预期`，把具体单据号/字段值写进去（评审与提单都引用这两列，lint 会对缺失给出告警）
 - `name` 以「管理端｜/员工端｜」开头（决定请求打哪个 host）
 - 断言 `validata` 写 JSON：`{"$.code": 200, "$.data.id": "..."}`；DB 断言用 `db_select` + `字段=值`
 - 详细动作与写法：`README.md` 第 8 节 + `api/README.md`

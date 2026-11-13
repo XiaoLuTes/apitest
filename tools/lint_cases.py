@@ -386,11 +386,18 @@ def lint_api_file(path, collector, available):
                 if rec not in cols:
                     collector.warn("API-HEADER", f"建议补一列 {rec}（缺 result/response 时结果不会回写，缺 extract 时无法产出变量）",
                                    file=display, sheet=sheet)
+            # 场景 / 场景说明：评审与提单时要靠它一眼看懂这条用例在干什么
+            for rec in ("场景", "场景说明"):
+                if rec not in cols:
+                    collector.warn("API-SCENE",
+                                   f"建议补「{rec}」列：场景写「模块｜子场景」，场景说明写「前置 + 操作 + 预期」",
+                                   file=display, sheet=sheet)
             if len(wb.sheetnames) > 1 and sheet not in API_SHEET_NAMES:
                 collector.warn("API-HEADER", f"sheet 名 [{sheet}] 不在约定集合 {sorted(API_SHEET_NAMES)} 内（不影响执行）",
                                file=display, sheet=sheet)
 
             # ---- 行级检查 ----
+            scene_blank = 0
             for row, values in data_rows:
                 record = {name: values[idx] for name, idx in cols.items()}
                 case_id = record.get("case_id")
@@ -403,6 +410,10 @@ def lint_api_file(path, collector, available):
                     # 整行只有备注 / 格式残留：框架仍会把它当用例收集并在执行时失败，这里只提示
                     collector.warn("API-ROW", "该行 case_id / name / method 均为空（不会被执行，建议删除或补齐）", **ctx)
                     continue
+                # 只在列存在时检查行内容，避免"列都没有"的情况下重复告警
+                if ("场景" in cols and _is_blank(record.get("场景"))) or \
+                        ("场景说明" in cols and _is_blank(record.get("场景说明"))):
+                    scene_blank += 1
                 if _is_blank(case_id):
                     collector.error("API-ID", "case_id 为空", **ctx)
                 else:
@@ -496,6 +507,10 @@ def lint_api_file(path, collector, available):
                                     f"{_suggest(var, available)}", **ctx)
                 if len(referenced) > 6:
                     collector.warn("API-VAR", f"还有 {len(referenced) - 6} 个未定义变量未逐条列出", **ctx)
+            if scene_blank:
+                collector.warn("API-SCENE",
+                               f"有 {scene_blank} 行缺少「场景」或「场景说明」（评审/提单时不好认这条用例做什么）",
+                               file=display, sheet=sheet)
     finally:
         wb.close()
     return display, total
