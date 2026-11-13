@@ -15,7 +15,9 @@
 
 | 日期 | 文件 | 用途 |
 | --- | --- | --- |
-| 2026-11-13 | （待补充） | 资料还没放进来，放进来后在这里登记一行 |
+| 2026-11-12 | `数据库表结构/payroll表结构.txt` | 55 张 payroll/结算/收款相关表建表语句（字段带 COMMENT） |
+| 2026-11-13 | `测试数据/README.md` | 本项目可用单据号与造数口径（已整理，随环境更新） |
+| 2026-11-13 | （待补充） | 其他资料放进来后在这里登记一行 |
 
 ## 已验证接口（实测，可作为写用例的依据）
 
@@ -30,8 +32,19 @@
 
 > 这些是历史实测结论，接口/字段变更后请更新本表；**路径与参数以 `接口文档/` 里的官方文档为准**，没有文档时以抓包为准并回填这里。
 
+## 关键表与主键（写 `db_select` 前先看这里）
+
+| 表 | 主键 | 说明 |
+| --- | --- | --- |
+| `gsr_payroll_salary_package` | `payroll_salary_package_id` | 薪资包 |
+| `gsr_payroll_salary` | `payroll_salary_id` | 薪资单；`source_system` 0 系统创建 / 1 手动 / 2 RPA |
+| `gsr_payroll_salary_package_rule` | `payroll_salary_package_rule_id` | 薪资包规则 |
+| `gsr_settlement_client` | `settlement_client_id` | 结算客户 |
+| `gsr_employee_tag` | `tag_id` | 员工标签 |
+
 ## 待补
 
 - [ ] 薪资包/结算包相关接口的完整参数说明（Swagger 导出）
-- [ ] `gsr_payroll*` 系列表结构（表名、主键、状态枚举）
+- [x] `gsr_payroll*` 系列表结构（`数据库表结构/payroll表结构.txt`）
+- [ ] 各表状态字段的枚举字典（如 `payroll_status`、`data_flag` 的取值含义）
 - [ ] 国家模板（France/Canada）指标编号对照表

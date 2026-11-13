@@ -15,7 +15,9 @@
 
 | 日期 | 文件 | 用途 |
 | --- | --- | --- |
-| 2026-11-13 | （待补充） | 资料还没放进来，放进来后在这里登记一行 |
+| 2026-11-12 | `数据库表结构/考勤各表结构.txt` | 35 张考勤/请假/审批相关表建表语句（字段带 COMMENT） |
+| 2026-11-13 | `测试数据/README.md` | 本项目可用单据号与造数口径（已整理，随环境更新） |
+| 2026-11-13 | （待补充） | 其他资料放进来后在这里登记一行 |
 
 ## 已验证接口（实测）
 
@@ -39,8 +41,19 @@
 | 审批人 | 361（jack@gsrtech.com，全局指定）、382（兜底）、381 | 自定义指定审批人必须是**全局审批人**（`client_id=None`），传本客户账号会 deploy 报错 |
 | 空审批人 | `assignedType=1` + `assignedUsers=[]` 属接口造数 | 前端指定人员是必填，页面造不出来，验证策略时注意 |
 
+## 关键表与主键（写 `db_select` 前先看这里）
+
+| 表 | 主键 | 说明 |
+| --- | --- | --- |
+| `gsr_employee_leave_info` | **`gsr_employee_info_id`** | 请假单（主键名与表名不一致，别写 `leave_info_id`） |
+| `atc_ru_instance` | `instance_id` | 审批实例 |
+| `atc_ru_task` | `task_id` | 审批任务 |
+| `atc_re_template` | `template_id` | 审批模板 |
+| `gsr_external_employee_normal_info` | `external_employee_normal_info_id` | 员工（公共表） |
+
 ## 待补
 
 - [ ] 假勤模板 deploy / 查询模板详情的接口路径与 body 结构
-- [ ] `gsr_approval_users`、审批实例/任务表的完整字段
+- [x] 审批实例/任务表（`atc_ru_instance` / `atc_ru_task` 已在 `数据库表结构/考勤各表结构.txt`）
+- [ ] `gsr_approval_users` 的完整字段（主键已知为 `gsr_approval_users_id`）
 - [ ] 请假额度计算规则（销假回补口径）
