@@ -318,6 +318,35 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 【自动化-测试环境】管理端｜薪资包管理｜按薪资包ID查询：断言项[$.total]失败 期望值: 1 实际值: 0
 ```
 
+### 证据驱动提单（推荐：单子信息完整）
+
+只从执行结果里摘错误文本，单子会"薄"到没法看。所以另有一条**证据驱动**的路径：
+把一次真实的 UI/接口操作过程完整记录成证据包，再据此生成缺陷单。
+
+| 组成 | 位置 | 说明 |
+| --- | --- | --- |
+| 证据采集 | `ui/utils/evidence.py`（`EvidenceRecorder`） | 记录真实步骤、命中关键词的接口请求/返回、页面截图，落盘 `reports/evidence/*.json` |
+| 提单 | `tools/evidence_bug.py` | 证据包 → 缺陷单（步骤/接口返回/截图附件/期望）；`--attach-to <id>` 可给已有单补附件 |
+| 附件上传 | `core/zentao_ui.py` | REST 传不了附件（服务端限制），走页面表单上传；内部用独立线程避免 Playwright 冲突 |
+| 场景模板 | `tools/demo_pkg_search.py` | "搜索不存在的关键字 → 列表为空 → 提单"的完整示例 |
+
+```powershell
+python tools/demo_pkg_search.py                 # 采集证据 + 出草稿
+python tools/demo_pkg_search.py --submit        # 采集 + 提单（含截图附件）
+python tools/evidence_bug.py --evidence reports/evidence/xxx.json            # 证据包 → 草稿
+python tools/evidence_bug.py --evidence reports/evidence/xxx.json --submit    # 证据包 → 提单
+python tools/evidence_bug.py --evidence reports/evidence/xxx.json --attach-to 9782   # 给已有单补附件
+```
+
+提单内容长这样（实测单 #9782）：
+
+- **标题**：`【自动化-测试环境】薪资包管理-按薪资包ID搜索「测试不存在code」返回空列表且无结果提示`
+- **重现步骤**：`[前置条件]` → `[步骤]` 4 步（菜单路径 / 输入值 / 点击 / 结果）→ `[结果]` 含接口 URL + 返回 `{"code":200,"msg":"查询成功","total":0,"rows":"<0 条>"}` → `[期望]` 人话描述 → `[截图]` 引用附件名 → `[备注]` 用例ID/采集时间/页面地址
+- **附件**：执行截图（页面表单上传，可点击查看）
+
+限制（实测）：该版本 `<img src="{文件id}.png">` 占位符在 API 写入步骤后**不会渲染成图片**，
+所以截图以附件形式挂在单据上，步骤里注明附件名；需要图片直接出现在正文时，可在禅道里手工插入一次。
+
 ### 提单过滤规则（默认只提「断言失败 + 稳定复现」）
 
 | 判定 | 处理 | 说明 |

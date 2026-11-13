@@ -32,8 +32,11 @@ JS_TABLE = """
   if (!t) return {headers: [], rows: []};
   const headers = Array.from(t.querySelectorAll('thead th')).map(th => (th.innerText || '').trim());
   const rows = Array.from(t.querySelectorAll('tbody tr'))
-      .filter(tr => !tr.querySelector('.ant-table-placeholder'))
-      .map(tr => Array.from(tr.querySelectorAll('td')).map(td => (td.innerText || '').trim()));
+      // 排除 antd 的“空数据占位行”和“测量行”，否则会被当成真实数据行
+      .filter(tr => !/ant-table-placeholder|ant-table-measure-row/.test(tr.className || ''))
+      .map(tr => Array.from(tr.querySelectorAll('td')).map(td => (td.innerText || '').trim()))
+      // 全空行、以及只有“暂无数据/ 无数据”的占位行都不算数据行
+      .filter(cells => cells.some(c => c) && !(cells.length === 1 && /^暂无数据$|^无数据$/.test(cells[0])));
   return {headers, rows};
 }
 """
