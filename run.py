@@ -4,6 +4,7 @@
 
 用法：
     python run.py --list                      # 列出所有用例集与项目
+    python run.py check-token                 # 预检 ACCESS_TOKEN_ADMIN 是否有效（约 2 小时过期）
     python run.py api 薪资包结算               # 只跑接口用例
     python run.py ui 薪资结算包收款包链路        # 只跑 UI 用例
     python run.py all                         # 两个用例集各跑默认项目
@@ -74,6 +75,43 @@ def print_list():
     print(f"Allure 结果：{paths.ALLURE_RESULTS}")
 
 
+def _business_base():
+    """业务平台地址（取 api 配置里 ENV 对应的 TEST_URL）"""
+    try:
+        from api.config.setting import setting
+        base = setting.TEST_URL
+        if isinstance(base, dict):                 # TEST_URL 是 {环境: 地址}
+            return base.get(setting.ENV) or next(iter(base.values()))
+        return base
+    except SystemExit:
+        return "https://test-admin.gsrtech.com"
+
+
+def precheck_token(suite):
+    """执行前预检 ACCESS_TOKEN_ADMIN；过期直接拦下，避免失败被误判成接口缺陷"""
+    if os.getenv("TOKEN_CHECK", "true").lower() in ("false", "0", "no"):
+        print("[token] 已跳过预检（--no-token-check / TOKEN_CHECK=false）")
+        return 0
+    from core.env import load_env
+    from core.token_check import TOKEN_HELP, check_admin_token
+
+    load_env()
+    base = _business_base()
+    ok, detail = check_admin_token(base, os.getenv("ACCESS_TOKEN_ADMIN", ""))
+    if ok:
+        print("[token] 预检通过：%s" % detail)
+        return 0
+    if ok is None:
+        print("[token] 无法判定（%s）——继续执行，但失败时先怀疑登录态" % detail)
+        return 0
+    print("=" * 78)
+    print("[token] 预检失败：%s" % detail)
+    print(TOKEN_HELP.format(url=base))
+    print("确认 token 没问题要强行执行：加 --no-token-check 或设 TOKEN_CHECK=false")
+    print("=" * 78)
+    return 2
+
+
 def build_args(suite, project, extra):
     """组装 pytest 参数"""
     args = []
@@ -107,6 +145,10 @@ def main(argv):
         # 用例静态检查（执行前的第一道机器初审）
         from tools.lint_cases import main as lint_main
         return lint_main(argv[1:])
+    if argv[0] in ("check-token", "token"):
+        suite = "api"
+        os.environ["TEST_SUITE"] = suite
+        return precheck_token(suite)
     if argv[0] == "zentao":
         # 执行结果 → 禅道提单（默认只生成草稿）
         from tools.zentao_report import main as zentao_main
@@ -129,6 +171,8 @@ def main(argv):
             os.environ["HEADLESS"] = "true"
         elif arg == "--headed":
             os.environ["HEADLESS"] = "false"
+        elif arg == "--no-token-check":
+            os.environ["TOKEN_CHECK"] = "false"
         elif arg.startswith("-"):
             # 其余参数原样交给 pytest（含它后面的值）
             if "=" in arg:
@@ -158,6 +202,10 @@ def main(argv):
         if not os.getenv("API_PROJECT"):
             print("[错误] all 需要指定接口用例项目：设置 .env 的 API_PROJECT，或先单独跑 python run.py api <项目名>")
             return 2
+
+    code = precheck_token(suite)
+    if code:
+        return code
 
     paths.ensure_dirs()
     print("=" * 78)

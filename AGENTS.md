@@ -36,6 +36,40 @@
 - 测试环境：业务平台 `https://test-admin.gsrtech.com`；禅道 `http://172.21.100.100:8101/zentao`
 - 执行方式：`python run.py <子命令>`（在 `D:\lu\pycharm\autotest` 下执行）
 
+### 0.1 环境准备（首次使用 / 换机器时看）
+
+**已在本机验证的版本**：Python `3.11.0` / Playwright `1.42.0` / allure 命令行 `2.20.1`（Windows 10）。
+
+```powershell
+cd D:\lu\pycharm\autotest
+pip install -r requirements.txt          # 依赖（含 pytest / playwright / openpyxl / pymysql / Pillow）
+python -m playwright install chromium     # UI 用例必需（只装浏览器，不装全套）
+```
+
+`.env` 必填 4 组（`python run.py check-token` 可验证第 2 组）：
+
+| 组 | 键 | 说明 |
+| --- | --- | --- |
+| 环境与库 | `ENV`、`DB_*`、`DB_ALLOWED_ENVS` | `ENV` 必须是「测试环境」才允许连库（第 5 节） |
+| 业务 token | `ACCESS_TOKEN_ADMIN`、`USER_TOKEN` | 浏览器 `GSR-Token`（约 **2 小时**过期）；员工端接口用 `USER_TOKEN` |
+| 禅道 | `ZENTAO_URL/ACCOUNT/PASSWORD/PRODUCT/MODULE/ASSIGNEE` | 提单用，账号密码登录换 token，不需要定期更新 |
+| 默认项目 | `API_PROJECT`、`UI_PROJECT` | 直接右键跑 pytest 时用它决定跑哪个项目 |
+
+**首次自检三条命令**（都通过说明环境可用）：
+
+```powershell
+python run.py --list                 # 能看到接口 11 个项目 + UI 5 个项目
+python run.py lint                   # 期望：17 个文件 / 827 条 / 0 错误（49 条存量警告不阻塞）
+python run.py check-token            # 期望：[token] 预检通过
+python run.py api 薪资包管理查询       # 期望：10 passed（最轻的接口用例，约 3 秒）
+```
+
+常见问题：
+- `[token] 预检失败` → 按提示更新 `.env` 的 `ACCESS_TOKEN_ADMIN`，别去怀疑接口缺陷。
+- UI 用例报 `Executable doesn't exist` → 没装浏览器，执行 `python -m playwright install chromium`。
+- 禅道 `--probe` 报 401 → 账号密码错或账号被锁，找用户确认，不要反复试。
+- 没装 allure 命令行只影响 html 报告生成，原始结果仍在 `reports/allure-results`。
+
 ## 1. 开工前 30 秒检查
 
 开工先读三处：`docs/项目资料/公共/测试数据.md`（环境与账号）、`docs/项目资料/<项目>/README.md` + `测试数据/README.md`（接口清单与可用单据号）、`docs/requirements/` 里同需求的历史拆分（有就接着用）。
@@ -43,7 +77,8 @@
 ```powershell
 cd D:\lu\pycharm\autotest
 python run.py --list        # 看现有用例集与项目名
-python run.py lint          # 现有用例是否干净（应 0 错误）
+python run.py lint          # 现有用例是否干净（应 0 错误 / 49 条存量警告）
+python run.py check-token    # ACCESS_TOKEN_ADMIN 是否有效（2 小时过期，执行前必看）
 python run.py zentao --probe # 禅道是否通（提单前才需要）
 ```
 
