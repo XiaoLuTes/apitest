@@ -1,7 +1,7 @@
 # 接口自动化测试框架
 
 > 假勤 / 审批流项目的 **pytest + Excel 数据驱动** 接口自动化测试框架
-> 最后更新：2026-11-06 ｜ 本文描述的是**当前代码的实际行为**，与旧版 `readme.txt` 的差异见 [第 12 节](#12-文档变更记录)
+> 最后更新：2026-11-13 ｜ 本文描述的是**当前代码的实际行为**，与旧版 `readme.txt` 的差异见 [第 12 节](#12-文档变更记录)
 
 | 项目 | 说明 |
 | --- | --- |
@@ -113,6 +113,7 @@ cp .env.example .env          # Linux / macOS
 | PyYAML | ~=6.0.1 | 变量文件读写 |
 | jsonpath | ~=0.82 | 响应取值与断言 |
 | PyMySQL | ~=1.1.2 | 数据库操作 |
+| pywin32 | 最新（仅 Windows） | `editexcel` 调 WPS / Excel 的 COM 接口（见 5.7） |
 
 - **（可选）查看 allure 报告** 需要额外安装 allure 命令行，见 [第 9 节](#9-报告与日志)。
 
@@ -143,20 +144,21 @@ python run.py
 
 ## 5. Excel 用例编写规范
 
-表头（第 1 行）必须存在，**列名不要改**（列名会作为字典 key，`result` / `response` 列是按表头名自动识别的）。共 10 列（第 7 列 `response` 写接口返回，第 10 列 `result` 写用例结果）：
+表头（第 1 行）必须存在，**列名不要改**（列名会作为字典 key，`result` / `response` / `retry` 列是按表头名自动识别的）。标准结构 10 列（第 7 列 `response` 写接口返回，第 10 列 `result` 写用例结果）；如需失败重试，**在最右侧再加一列表头 `retry`**（见 [5.8](#58-失败重试retry)）：
 
 | # | 列名 | 是否手填 | 说明 |
 | --- | --- | --- | --- |
 | 1 | `case_id` | 是 | 用例编号。**只用于日志和 allure 标题**，不影响结果写入位置（结果按用例真实行号写入，编号可以不连续）。建议同一 sheet 内唯一 |
 | 2 | `name` | 是 | 用例名称。**以 `管理端` / `员工端` 开头决定用哪个域名**；不匹配时报 WARNING 并用 `DEFAULT_URL`（默认管理端），路径仍正常拼接。支持 `${变量}`，会作为 allure 标题 |
 | 3 | `headers` | 是 | 请求头。推荐直接写变量，如 `${headers_admin}`；也可写 JSON 文本 |
-| 4 | `method` | 是 | 大小写不敏感。HTTP：`get/post/put/patch/delete/head/options`；文件上传：`upload`（等价 POST）、`upload:put`、`upload:patch`；数据库：`db_select` / `db_update`。⚠️ `head` / `options` 会忽略 `data` |
+| 4 | `method` | 是 | 大小写不敏感。HTTP：`get/post/put/patch/delete/head/options`；文件上传：`upload`（等价 POST）、`upload:put`、`upload:patch`；文件操作：`download`（下载落盘）、`editexcel`（调 WPS/Excel 改单元格，**仅本机**，见 5.6 / 5.7）；数据库：`db_select` / `db_update`。⚠️ `head` / `options` 会忽略 `data` |
 | 5 | `url` | 是 | 接口路径，可含变量，如 `/api/center/template/reject/task/${taskid}?isProxy=true`。以 `http://`、`https://` 开头则视为完整地址，不再拼域名 |
-| 6 | `data` | 是 | `get` → 查询参数字符串（`pageNum=1&pageSize=10`）；`post/put/patch/delete` → JSON 文本请求体（变量可嵌在字符串里）；`upload` → 本地文件路径，或 JSON 对象（见 [5.4](#54-文件上传upload)）；`db_*` → SQL 语句 |
+| 6 | `data` | 是 | `get` → 查询参数字符串（`pageNum=1&pageSize=10`）；`post/put/patch/delete` → JSON 文本请求体（变量可嵌在字符串里）；`upload` → 本地文件路径，或 JSON 对象（见 [5.4](#54-文件上传upload)）；`download` / `editexcel` → JSON 对象（见 [5.6](#56-文件下载download) / [5.7](#57-excel-编辑editexcel)）；`db_*` → SQL 语句 |
 | 7 | `response` | **留空** | **接口返回原文**：跑完自动写入响应文本；请求没发出去（变量缺失 / 被跳过）时为空 |
 | 8 | `extract` | 否 | 变量提取，JSON 文本，如 `{"taskid": "$.data.taskId"}`。表达式以 `$` 开头 → JSONPath；其它 → 正则（**推荐 JSONPath**）。取不到内容本条用例直接失败 |
 | 9 | `validata` | 否 | 断言，JSON 文本。留空 → HTTP 用例跳过断言（⚠️ 数据库用例语义不同，见 5.3） |
 | 10 | `result` | **留空** | **用例结果**：跑完自动写入 `通过` / `失败：原因` / `跳过：原因`；和接口返回分开，一眼就能看出用例过没过 |
+| 11 | `retry` | 否 | 失败重试：留空 = 用 `HTTP_RETRY_TIMES`（默认 1 次）；数字 = 总尝试次数（含第一次）；也可写 JSON `{"times": 3, "interval": 1}`。只对 HTTP 用例生效，见 [5.8](#58-失败重试retry) |
 
 ### 5.1 断言写法（HTTP 用例）
 
@@ -277,6 +279,100 @@ multipart 字段名固定为 `file`。
 
 ---
 
+### 5.6 文件下载（download）
+
+`method` 填 `download`：框架**流式**接收响应并落盘（不会把整个文件读进内存），把保存路径写进 `response` 列和变量。
+
+| 列 | 值 |
+| --- | --- |
+| `method` | download |
+| `url` | `/api/center/country/template` |
+| `data` | `{"params": {"countryCode": "FR"}, "var": "tpl_file"}` |
+
+`data` 两种写法：
+
+| 写法 | 含义 |
+| --- | --- |
+| 字符串 `countryCode=FR` | 直接作为查询参数 |
+| JSON 对象 | `params`=查询参数（可省）、`var`=把保存路径写进哪个变量（可省）、`dir`=保存目录（可省） |
+
+**行为**
+
+- 保存目录：`setting.DOWNLOAD_PATH`（默认 `reports/downloads/`），相对路径按**项目根**解析，不依赖运行目录；保存后写入变量的是**绝对路径**
+- 文件名优先取 `Content-Disposition`（支持 RFC5987 的 `filename*=UTF-8''...` 中文名），取不到用 `{case_id}_{时间戳}.{扩展名}`
+- 同名文件**不覆盖**，自动加 `_1`、`_2`…
+- HTTP ≥ 400 或文件内容为空 → **直接报错**，不会把错误页当成文件存下来
+
+**注意**
+
+- 只支持 GET
+- `validata` / `extract` 在该方法里不生效（`validata` 写了会打 WARNING）；产出变量请用 `data.var`
+
+---
+
+### 5.7 Excel 编辑（editexcel）
+
+`method` 填 `editexcel`：调用本机 **WPS / Excel** 打开文件 → 填单元格 → `CalculateFullRebuild()` 全量重算 → 保存。这样公式的**缓存值**是正确的（openpyxl 保存时不写缓存值，POI 不 evaluate 时会读到 `None`）。
+
+| 列 | 值 |
+| --- | --- |
+| `method` | editexcel |
+| `data` | `{"file": "${tpl_file}", "cells": {"CD9": 1.0, "CE9": 1.0}, "sheet": "sheet1"}` |
+
+| 键 | 说明 |
+| --- | --- |
+| `file` | 必填，待编辑的 xlsx（**原地覆盖**；相对路径按项目根解析） |
+| `cells` | 必填，`{"单元格": 值}`；字符串按文本写、数字按数字写、`null` 清空 |
+| `sheet` | 可选，**重命名第一个 sheet**（不是选择 sheet） |
+
+> ⚠️ **该方法仅支持本机执行，不支持 Jenkins。**
+>
+> 它通过 COM 调用 WPS/Excel，必须有**交互式桌面会话**。Jenkins 以 Windows 服务方式运行时处于 Session 0（无桌面），调用会失败或挂起。若必须在 CI 上跑，需要把 agent 改成“登录桌面运行”，或用计划任务 / PsExec 注入交互会话。
+>
+> 另外需要 `pywin32`（已写进 `requirements.txt`：`pywin32; sys_platform == "win32"`；手工安装用 `pip install pywin32`）。
+
+**限制**
+
+- 只能写合并单元格的**左上角**，写其它格会静默丢失
+- 只支持 xlsx / xlsm
+- 每次调用会启停一次 WPS/Excel 进程（约 1~3 秒）
+- 文件被其它程序占用时会以只读方式打开 → 会明确报错
+
+---
+
+### 5.8 失败重试（retry）
+
+`retry` 列控制一条 HTTP 用例最多尝试几次，**默认不重试**（`HTTP_RETRY_TIMES=1`）。
+
+| 写法 | 含义 |
+| --- | --- |
+| 留空 | 用 `HTTP_RETRY_TIMES` / `HTTP_RETRY_INTERVAL`（默认 1 次 / 1 秒） |
+| `3` | 最多尝试 3 次，间隔用默认值 |
+| `{"times": 20, "interval": 2}` | 最多尝试 20 次，每次间隔 2 秒 |
+
+**触发重试的条件**
+
+- 断言失败（`AssertionError`）；
+- `extract` 没取到内容（`ExtractValueError`）。
+
+**不会重试的情况**
+
+- 网络异常（连接失败、超时、DNS 解析失败等）——直接失败，重试通常会掩盖真实原因；
+- 变量未定义、`db_*`、`download`、`editexcel` 用例——`retry` 列在这些分支不生效。
+
+**行为说明**
+
+- 总尝试次数**含第一次**：`3` = 第一次 + 2 次重试；
+- 每次重试都会重新发请求、重新执行 `extract`、重新断言，以最后一次成功的结果为准；
+- 重试期间失败那次提取到的变量可能已写入变量文件，最终成功的那次会覆盖它，用例不会被标记为不可信。
+
+**报告里的表现**
+
+- 不管尝试几次，`断言成功` / `断言失败` 都只挂**一个汇总附件**（所有断言项合并）；
+- 响应附件名为 `响应参数（最后一次）`；若最后一次没拿到响应，会标成 `响应参数（第 N 次尝试，之后未拿到响应）`，不会拿旧响应冒充最后一次。
+
+---
+
 ## 6. 变量机制
 
 - **全局变量**：`variable/all.yaml`（按 `ENV` 选择），适合放账号、规则 ID、公共请求头等。
@@ -317,14 +413,17 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 | 配置项 | 说明 |
 | --- | --- |
 | `ENV` | 环境：测试环境 / 预生产环境 / 生产环境。决定 `BASE_URLS`（域名）和 `ALL_YAML`（全局变量文件） |
-| `CURRENT_PROJECT` | 用例项目：假勤 / payroll / 调试。决定 `TEST_FLIELOAD`（跑哪个 Excel） |
+| `CURRENT_PROJECT` | 用例项目：`假勤` / `payroll` / `调试` / `审批流或签自动通过` / `审批流或签矩阵` / `报销自动审批` / `报销审批人为空`（必须是 `TEST_FLIELOADS` 里已有的键）。决定 `TEST_FLIELOAD`（跑哪个 Excel） |
 | `BASE_URLS` / `TEST_URL` | 各端域名（管理端 / 员工端） |
 | `DEFAULT_URL` | 用例名没写"管理端 / 员工端"前缀时使用的默认端（默认 `管理端`） |
 | `HTTP_TIMEOUT` | 接口请求默认超时秒数（默认 30），未显式传 `timeout` 时生效 |
+| `HTTP_RETRY_TIMES` | `retry` 列留空时的默认总尝试次数（含第一次），默认 `1`（不重试） |
+| `HTTP_RETRY_INTERVAL` | 两次尝试之间的默认间隔秒数，默认 `1` |
 | `INVALIDATE_ON_ANY_FAILURE` | 用例失败时是否把下游变量判定为不可信（默认 `True`）；改 `False` 则只有“未取到响应 / 提取失败”才连带跳过下游 |
 | `REPORT_PATH` | 报告目录（默认 `reports/`） |
 | `RESULT_PATH` | 用例执行结果文件输出目录（默认 `reports/results/`） |
 | `ALLURE_RESULT_PATH` | allure 原始结果目录（默认 `reports/temp/`，须与 pytest.ini 里的 `--alluredir` 一致） |
+| `DOWNLOAD_PATH` | 下载文件保存目录（默认 `reports/downloads/`）；相对路径按项目根解析，下载后写入变量的是绝对路径 |
 | `WECOM_WEBHOOK` | 企业微信群机器人 Webhook（留空则不发送通知；也可用系统环境变量注入） |
 | `WECOM_MAX_CONTENT_BYTES` | 通知内容上限（字节），默认 4000（企微硬性上限 4096） |
 | `WECOM_TIMEOUT` | 通知请求超时（秒），默认 10 |
@@ -333,7 +432,7 @@ headers_omni: Authorization: Bearer ${access_token_omni}
 | `DB_TIMEOUT` | 数据库连接超时（默认 30 秒） |
 
 **环境变量覆盖**（不改代码即可切换，便于 Jenkins 传参）：
-`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`HTTP_TIMEOUT`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`、`WECOM_MAX_CONTENT_BYTES`、`WECOM_TIMEOUT`、`WECOM_ENABLE`
+`ENV`、`CURRENT_PROJECT`、`REPORT_PATH`、`RESULT_PATH`、`ALLURE_RESULT_PATH`、`DOWNLOAD_PATH`、`HTTP_TIMEOUT`、`HTTP_RETRY_TIMES`、`HTTP_RETRY_INTERVAL`、`INVALIDATE_ON_ANY_FAILURE`、`DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_PORT`、`DB_NAME`、`DB_TIMEOUT`、`USER_TOKEN`、`WECOM_WEBHOOK`、`WECOM_MAX_CONTENT_BYTES`、`WECOM_TIMEOUT`、`WECOM_ENABLE`
 
 ```bat
 :: Windows (cmd)
@@ -434,6 +533,12 @@ allure generate ./reports/temp -o ./reports/allure-reports --clean     # 生成�
 
 > 说明：`run.py` 里的 `allure generate` 代码目前是**注释状态**，所以 `reports/` 下不会自动出现 `index.html`。
 
+**每条 HTTP 用例的附件：**
+
+- `请求路径` / `请求头` / `请求参数`：只挂一份；
+- `断言成功` 或 `断言失败`：所有断言项合并成一个汇总，重试多次也只挂最后一次的结果；
+- `响应参数`：最后一次尝试的响应；重试后最后一次没拿到响应（如网络异常）会标为 `响应参数（第 N 次尝试，之后未拿到响应）`。
+
 **用例结果文件会一并进报告：**
 
 - 会话结束时，除了生成结果文件，还会向 `reports/temp` 写入一条汇总记录（`*-result.json` + xlsx 附件），报告左侧会出现一个独立 suite **「用例执行结果」**，点开即可**直接下载 xlsx**；
@@ -522,6 +627,7 @@ git rm -r --cached .idea
 - **带公式的 xlsx 不能用 openpyxl 改写**：这类文件（尤其是后端生成、还要传回后端的报表）经 openpyxl 读写后会**丢失公式的缓存值**（实测：某对账单 744 个缓存值掉到 64 个；`data_only=True` 会把 88 个公式直接清零），文件会被后端校验拒绝。若确需改动（例如只改 sheet 名），应改用 zip + 只替换 `xl/workbook.xml` 与 `docProps/app.xml` 文本的方案，其余部件字节保持不变。
 - **对账单上传目前需人工介入**：后端要求上传文件的 sheet 名等于结算包 code，而该 code 是每次运行动态产生的，写死的文件无法匹配。当前做法是手工用 WPS / Excel 改 sheet 名（会正常重算并保存缓存值）后再上传，该用例不适合放进自动用例表。
 - `__pycache__/`、`.pytest_cache/`、`reports/`、`*.log`、`.env`、`variable/extract.yaml`、`~$*.xlsx` 已由 `.gitignore` 忽略。
+- **`editexcel` 仅支持本机，不支持 Jenkins**：它依赖 WPS/Excel 的 COM 接口与交互式桌面会话；Jenkins 以服务方式运行（Session 0）时无法调用，详见 [5.7](#57-excel-编辑editexcel)。
 
 ---
 
@@ -545,3 +651,5 @@ git rm -r --cached .idea
 6. **补充文件上传（`upload`）的用法**：`method` 新增 `upload:put` / `upload:patch`；`data` 支持“只传文件”与“带表单字段（JSON）”两种写法；补充 `Content-Type` 会被强制剔除、相对路径以项目根目录（`setting.BASE_DIR`）为基准等注意事项（见 [5.4](#54-文件上传upload)）。
 7. **更新安全与已知限制**：运行时文件已移出版本控制、`.gitignore` 已生效（含 `reports/`、`.env`、`variable/extract.yaml`），凭据轮换仍待处理；新增“带公式 xlsx 不能用 openpyxl 改写”与“对账单上传需人工介入”两条（见 [第 11 节](#11-安全与已知限制)）。
 8. **补充按 sheet 分层与分表统计**：一个文件可按「数据准备 / 测试执行 / 数据清理」分 sheet，框架按 sheet 顺序执行、跨 sheet 的变量与依赖跳过照常生效；会话结束的日志与企微卡片输出分表统计（如「数据准备 通过12 失败0 跳过0 | 测试执行 通过2 失败1」），结果文件名仍为全量统计（见第 5.5 节）。
+9. **补充文件操作能力**：新增 `download`（流式下载落盘、路径写入变量）与 `editexcel`（WPS/Excel 重算后保存单元格）；说明 `editexcel` **仅支持本机、不支持 Jenkins**（见 [5.6](#56-文件下载download) / [5.7](#57-excel-编辑editexcel)）。
+10. **补充失败重试与相关配置**：新增 `retry` 列（总尝试次数、含第一次），只重试断言失败与 `extract` 未取到内容，网络异常不重试；补充 `DOWNLOAD_PATH`、`HTTP_RETRY_TIMES`、`HTTP_RETRY_INTERVAL` 三个配置；`requirements.txt` 补 `pywin32; sys_platform == "win32"`（`editexcel` 依赖）；同步说明重试时的 Allure 附件行为（见 [5.8](#58-失败重试retry)）。

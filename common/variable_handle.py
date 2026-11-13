@@ -28,9 +28,7 @@ class ExtractValueError(Exception):
 
 class UpstreamDependencyError(Exception):
     """依赖的前置用例失败，变量未产出 / 不可信
-
-    由执行器捕获后把当前用例标记为 skip，
-    避免出现“一条根因 + N 条连环红”的报告噪声。
+    由执行器捕获后把当前用例标记为 skip
     """
     pass
 
@@ -44,7 +42,7 @@ class VariableHandle:
         """递归替换变量（支持嵌套变量）
 
         :param data: 原始数据（str/dict/list/数字等）
-        :param current_depth: 变量嵌套深度（只有"变量套变量"才累加）
+        :param current_depth: 变量嵌套深度
         :return: 替换后的原始类型数据（dict/list/str/int等）
         """
         # 深度保护
@@ -300,8 +298,18 @@ class VariableHandle:
         return None
 
     @staticmethod
+    def summary_text(details: list, label: str) -> str:
+        """生成断言汇总文本（成功 / 失败共用同一格式）"""
+        return (
+            f"\n========== 断言{label}汇总 ==========\n"
+            f"总计{label}断言数: {len(details)}\n"
+            + "\n".join(f"{i + 1}. {item}" for i, item in enumerate(details))
+            + "\n=================================="
+        )
+
+    @staticmethod
     @allure.step("断言验证")
-    def assert_validata(req: Any, validata: Any) -> list:
+    def assert_validata(req: Any, validata: Any, attach: bool = True) -> list:
         """断言验证（失败时抛出异常标记用例失败）"""
         # 无断言：None、"" 、空dict/空list 都视为无断言
         if not validata:
@@ -322,6 +330,7 @@ class VariableHandle:
             raise AssertionError(error_msg) from e
 
         results = []
+        success_details = []
         failed_details = []  # 收集所有失败的断言详情
         for jsonpath_expr, expected_value in validata_dict.items():
             try:
@@ -342,7 +351,7 @@ class VariableHandle:
             if check_result:
                 msg = f"断言成功: {jsonpath_expr} = {actual_value}"
                 logger.info(msg)
-                allure.attach(f"断言成功", msg)
+                success_details.append(msg)
             else:
                 fail_msg = (
                     f"断言项[{jsonpath_expr}]失败 | "
@@ -353,16 +362,15 @@ class VariableHandle:
                 logger.error(fail_msg)
                 failed_details.append(fail_msg)
 
+        if attach and success_details:
+            allure.attach(body=VariableHandle.summary_text(success_details, "成功"),
+                          name="断言成功", attachment_type=allure.attachment_type.TEXT)
+
         # 处理断言失败
         if failed_details:
-            # 构建汇总失败信息
-            fail_summary = (
-                    f"\n========== 断言失败汇总 ==========\n"
-                    f"总计失败断言数: {len(failed_details)}\n"
-                    + "\n".join([f"{i + 1}. {msg}" for i, msg in enumerate(failed_details)])
-                    + "\n=================================="
-            )
-            allure.attach(f"断言失败", fail_summary)
+            fail_summary = VariableHandle.summary_text(failed_details, "失败")
+            if attach:
+                allure.attach(body=fail_summary, name="断言失败", attachment_type=allure.attachment_type.TEXT)
             raise AssertionError(fail_summary)  # 抛出断言失败异常
         logger.info("所有断言验证通过")
         return results

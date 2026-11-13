@@ -1,8 +1,10 @@
 import json
+from typing import Any
+
 import allure
 import pytest
 from config.setting import setting
-from common import request_util, excel_read, run_state
+from common import request_util, excel_read, run_state, file_util, yaml_util, retry
 from common.logger import logger
 from common.variable_handle import ExtractValueError, UpstreamDependencyError, VariableHandle, VariableNotFoundError
 from common.database import DatabaseUtils
@@ -102,7 +104,19 @@ class Executor:
             if method in ('db_select', 'db_update') and not data:
                 raise ValueError(f"用例 {case_id} 未填写SQL，无法执行数据库操作")
 
-            if method == 'db_select':
+            # editexcel：用 WPS / Excel 引擎填写单元格并重算（不发请求、不写 response 列）
+            # 仅支持本机的方法,Jenkins本机运行session0同样不可调用
+            if method == 'editexcel':
+                if not isinstance(data, dict):
+                    raise ValueError(f"用例 {case_id} 的 editexcel data 必须是 JSON 对象（file / cells / sheet）")
+                edit_file = str(data.get('file') or '').strip()
+                edit_cells = data.get('cells')
+                if not edit_file:
+                    raise ValueError(f"用例 {case_id} 的 editexcel 缺少 file（待编辑的 xlsx 路径）")
+                if not isinstance(edit_cells, dict) or not edit_cells:
+                    raise ValueError(f"用例 {case_id} 的 editexcel 缺少 cells，格式：{{\"单元格\": 值}}")
+                file_util.edit_excel_by_wps(edit_file, edit_cells, data.get('sheet'))
+            elif method == 'db_select':
                 self._db_utils.verify_mysql_data(data, validata)
             elif method == 'db_update':
                 sql_result = self._db_utils.execute_mysql_update(data)
@@ -112,21 +126,76 @@ class Executor:
                     raise AssertionError(f"数据库更新影响行数不符合预期，期望: {validata}, 实际: {sql_result}")
                 else:
                     logger.info(f"数据库更新行数校验通过，期望: {validata}, 实际: {sql_result}")
+            elif method == 'download':
+                url = self.build_url(name, file['url'])
+                download_dir = None
+                download_var = None
+                download_params = data
+                if isinstance(data, dict):
+                    download_dir = data.get('dir')
+                    download_var = data.get('var')
+                    download_params = data.get('params')
+                if validata:
+                    logger.warning(f"用例 {case_id}：download 不支持 validata 断言，已忽略")
+                logger.info(f"\n实际请求url:{url},\n实际请求参数{download_params}")
+                resp = request_util.send_request(method='download', url=url, data=download_params, headers=headers)
+                try:
+                    saved = file_util.save_response_file(resp, case_id=case_id, target_dir=download_dir)
+                finally:
+                    resp.close()
+                if download_var:
+                    yaml_util.write_yaml({download_var: saved})
+                excel_read.Excel.record_result(self.fileload, sheet, row_num,
+                                               file.get('response_col'), f"文件已保存：{saved}")
             else:
                 url = self.build_url(name, file['url'])
+                attempts, interval = retry.resolve(file.get('retry'))
                 logger.info(f"\n实际请求url:{url},\n实际请求参数{data}")
-                self.req = request_util.send_request(method=method, url=url, data=data, headers=headers)
+
                 allure.attach(body='' + url + '', name='请求路径', attachment_type=allure.attachment_type.TEXT)
                 allure.attach(body=json.dumps(headers, ensure_ascii=False, default=str), name='请求头',
                               attachment_type=allure.attachment_type.JSON)
                 allure.attach(body=json.dumps(data, ensure_ascii=False, default=str), name='请求参数',
                               attachment_type=allure.attachment_type.JSON)
-                allure.attach(body=self.req.text, name='响应参数', attachment_type=allure.attachment_type.JSON)
-                excel_read.Excel.record_result(self.fileload, sheet, row_num, file.get('response_col'), self.req.text)
-                if extract:
-                    VariableHandle.extract_value(self.req, extract)
-                extract_done = True
-                self.validate_result = VariableHandle.assert_validata(self.req, validata)
+
+                attempt_no = 0
+                last_req: Any = None
+                last_req_attempt = 0
+
+                def _attempt():
+                    nonlocal extract_done, attempt_no, last_req, last_req_attempt
+                    attempt_no += 1
+                    self.req = None
+                    req = request_util.send_request(method=method, url=url, data=data, headers=headers)
+                    self.req = req
+                    last_req, last_req_attempt = req, attempt_no
+                    excel_read.Excel.record_result(self.fileload, sheet, row_num,
+                                                   file.get('response_col'), req.text)
+                    if extract:
+                        VariableHandle.extract_value(req, extract)
+                    extract_done = True
+                    self.validate_result = VariableHandle.assert_validata(req, validata, attach=False)
+
+                try:
+                    retry.call(_attempt, times=attempts, interval=interval,
+                               retry_on=(AssertionError, ExtractValueError), desc=f"用例 {case_id}")
+                    passed_details = [f"断言成功: {item['key']} = {item['actual']}"
+                                      for item in (self.validate_result or []) if item.get('check_result')]
+                    if passed_details:
+                        allure.attach(body=VariableHandle.summary_text(passed_details, "成功"),
+                                      name='断言成功', attachment_type=allure.attachment_type.TEXT)
+                except AssertionError as error:
+                    allure.attach(body=str(error), name='断言失败',
+                                  attachment_type=allure.attachment_type.TEXT)
+                    raise
+                finally:
+                    if last_req is not None:
+                        if last_req_attempt == attempt_no:
+                            attach_name = '响应参数（最后一次）' if attempt_no > 1 else '响应参数'
+                        else:
+                            attach_name = f'响应参数（第 {last_req_attempt} 次尝试，之后未拿到响应）'
+                        allure.attach(body=last_req.text, name=attach_name,
+                                      attachment_type=allure.attachment_type.JSON)
 
             if self.req is not None:
                 logger.info(f"返回结果：{self.req.text},\n断言结果:{self.validate_result}")

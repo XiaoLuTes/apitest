@@ -26,6 +26,11 @@ leave_G3_end: '2026-12-17 23:59:59.000'
 # H组：撤回后额度回滚
 leave_H_start: '2026-12-18 00:00:00.000'
 leave_H_end: '2026-12-21 23:59:59.000'
+# R组：销假（REVOKELEAVE）释放已通过假期额度
+leave_R_start: '2027-03-16 00:00:00.000'
+leave_R_end: '2027-03-17 23:59:59.000'
+# 测试员工（a129@qq.com）的外部员工ID，销假入参需要，换账号时同步修改
+leave_external_emp_id: '114734'
 headers_user:
    Authorization: Bearer ${user_token}
    Connection: keep-alive

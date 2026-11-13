@@ -40,7 +40,9 @@ class Setting:
             "调试": f"testcase/test_test.xlsx",
             "payroll": f"testcase/test_payroll.xlsx",
             "审批流或签自动通过": f"testcase/test_approval_auto_approved.xlsx",
-            "审批流或签矩阵": f"testcase/test_approval_ouqian_matrix.xlsx"
+            "审批流或签矩阵": f"testcase/test_approval_ouqian_matrix.xlsx",
+            "报销自动审批": f"testcase/test_reimbursement_auto_approval.xlsx",
+            "报销审批人为空": f"testcase/test_reimbursement_empty_approver.xlsx"
         }
         self.CURRENT_PROJECT = self._get_env_var("CURRENT_PROJECT", '')
         self.TEST_FLIELOAD = self.TEST_FLIELOADS[self.CURRENT_PROJECT]  # excel测试用例路径
@@ -57,6 +59,11 @@ class Setting:
         self.RESULT_PATH = self._get_env_var("RESULT_PATH", f"{self.REPORT_PATH}results/")
         # allure 原始结果目录（与 pytest.ini 里的 --alluredir 保持一致）
         self.ALLURE_RESULT_PATH = self._get_env_var("ALLURE_RESULT_PATH", f"{self.REPORT_PATH}temp/")
+        # 下载文件保存目录（下载接口落盘的位置）
+        self.DOWNLOAD_PATH = self._get_env_var("DOWNLOAD_PATH", f"{self.REPORT_PATH}downloads/")
+        # 失败重试默认值（用例 retry 列留空时使用）
+        self.HTTP_RETRY_TIMES = int(self._get_env_var("HTTP_RETRY_TIMES", 1))
+        self.HTTP_RETRY_INTERVAL = float(self._get_env_var("HTTP_RETRY_INTERVAL", 1))
         # 企业微信群机器人 Webhook：配置后会话结束自动推送执行结果卡片（留空则不发送，本地执行无感）
         self.WECOM_WEBHOOK = self._get_env_var("WECOM_WEBHOOK", "")
         # 企业微信通知：markdown 内容上限（字节，企微硬性上限 4096）与请求超时（秒）
@@ -76,7 +83,7 @@ class Setting:
             },
             "测试环境": {
                 "管理端": "https://test-admin.gsrtech.com",
-                "员工端": "https://test-admin.gsrtech.com"
+                "员工端": "https://test-omni.gsrtech.com"
             }
         }
         self.TEST_URL = self.BASE_URLS[self.ENV]

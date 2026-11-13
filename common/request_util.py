@@ -38,6 +38,9 @@ def send_request(method, url, data, **kwargs):
                 req = session.request(method=method, url=url, **kwargs)
         elif method in ('head', 'options'):
             req = session.request(method=method, url=url, **kwargs)
+        elif method == 'download':
+            # 下载：data 作为查询参数；stream=True 不把整个文件读进内存，落盘由执行器调用 file_util 完成
+            req = session.request(method='get', url=url, params=data, stream=True, **kwargs)
         elif method.split(':', 1)[0].strip() == 'upload':
             # 文件上传：data 为文件路径，或 {"file": 路径, "file_field": 服务端字段名, "其余键": 表单字段值}
             upload_verb = 'post'
@@ -86,9 +89,9 @@ def send_request(method, url, data, **kwargs):
                                       files={file_field: (os.path.basename(file_path), f)}, **kwargs)
         else:
             raise ValueError(
-                f"不支持的请求方法 [{method}]，当前支持：get/post/put/patch/delete/head/options/upload"
+                f"不支持的请求方法 [{method}]，当前支持：get/post/put/patch/delete/head/options/upload/download"
                 f"（upload 可用 upload:put、upload:patch 指定动词），"
-                f"请检查用例 method 列拼写（db_select/db_update 由执行器单独分流）"
+                f"请检查用例 method 列拼写（db_select/db_update/editexcel 由执行器单独分流）"
             )
     except requests.RequestException as e:
         # 统一封装网络层异常，失败时能直接看出是哪个请求出的问题
