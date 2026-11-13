@@ -318,36 +318,31 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 【自动化-测试环境】管理端｜薪资包管理｜按薪资包ID查询：断言项[$.total]失败 期望值: 1 实际值: 0
 ```
 
-### 证据驱动提单（两个入口共用）
+### 提单是怎么串起来的（接口 / UI 两个入口共用一套）
 
-只从执行结果里摘错误文本，单子会"薄"到没法看。所以另有一条**证据驱动**的路径：
-把一次真实的 UI/接口操作过程完整记录成证据包，再据此生成缺陷单。
-
-| 组成 | 位置 | 说明 |
+| 环节 | 位置 | 说明 |
 | --- | --- | --- |
-| 证据采集 | `ui/utils/evidence.py`（`EvidenceRecorder`） | 记录真实步骤、命中关键词的接口请求/返回、页面截图，落盘 `reports/evidence/*.json` |
-| 提单 | `tools/evidence_bug.py` | 证据包 → 缺陷单（步骤/接口返回/截图附件/期望）；`--attach-to <id>` 可给已有单补附件 |
-| 附件上传 | `core/zentao_ui.py` | REST 传不了附件（服务端限制），走页面表单上传；内部用独立线程避免 Playwright 冲突 |
-| 场景模板 | `tools/demo_pkg_search.py` | "搜索不存在的关键字 → 列表为空 → 提单"的完整示例 |
+| 接口证据采集 | `api/common/executor.py`（`except` 分支）→ `api/common/evidence.py` | 记录方法 / URL / 请求参数 / HTTP 状态 / 响应 + 断言明细，落盘 `reports/evidence/api_*.json` |
+| UI 证据采集 | `ui/utils/executor.py`（`execute_test_case`）→ `ui/utils/evidence.py` | 记录真实步骤 + `/api/` 请求返回（最多 10 条）+ 页面截图 |
+| 单据组装 | `tools/evidence_bug.py`（`build_steps_html` / `build_title` / `file_bug`） | **格式只在这里定义**，所有入口共用 |
+| 建单 / 改单 / 附件 | `core/zentao.py`（`create_bug` / `update_bug` / `delete_bug`）+ `core/zentao_ui.py`（页面上传附件） | 附件走 REST 会被服务端拒，UI 单的截图用页面表单上传 |
+| 入口 | `run.py zentao`（结果驱动）、`tools/evidence_bug.py`（证据包驱动）、`tools/demo_pkg_search.py`（场景模板） | 三者产出格式完全一致 |
 
 ```powershell
-python tools/demo_pkg_search.py                 # 采集证据 + 出草稿
-python tools/demo_pkg_search.py --submit        # 采集 + 提单（含截图附件）
-python tools/evidence_bug.py --evidence reports/evidence/xxx.json            # 证据包 → 草稿
-python tools/evidence_bug.py --evidence reports/evidence/xxx.json --submit    # 证据包 → 提单
+python run.py zentao                                    # 执行结果 → 草稿
+python run.py zentao --submit --yes                      # 执行结果 → 提单
+python tools/evidence_bug.py --evidence reports/evidence/xxx.json [--submit]
 python tools/evidence_bug.py --evidence reports/evidence/xxx.json --attach-to 9782   # 给已有单补附件
+python tools/demo_pkg_search.py --submit                 # 场景模板：搜索不存在的关键字 → 提单
 ```
 
-提单内容长这样（实测单 #9782）：
+实测示例：接口单 [#9784](http://172.21.100.100:8101/zentao/bug-view-9784.html)（无附件，正文含请求参数与接口返回）；
+UI 单 [#9782](http://172.21.100.100:8101/zentao/bug-view-9782.html)（带页面截图附件）。
 
-- **标题**：`【自动化-测试环境】薪资包管理-按薪资包ID搜索「测试不存在code」返回空列表且无结果提示`
-- **重现步骤**：`[前置条件]` → `[步骤]` 4 步（菜单路径 / 输入值 / 点击 / 结果）→ `[结果]` 含接口 URL + 返回 `{"code":200,"msg":"查询成功","total":0,"rows":"<0 条>"}` → `[期望]` 人话描述 → `[截图]` 引用附件名 → `[备注]` 用例ID/采集时间/页面地址
-- **附件**：执行截图（页面表单上传，可点击查看）
+已知限制：该禅道版本把 `<img src="{文件id}.png">` 通过 API 写进步骤后**不会渲染成图片**，
+所以截图以附件形式挂在单上、步骤里注明附件名；必须让图片出现在正文时，在禅道里手工插入一次。
 
-限制（实测）：该版本 `<img src="{文件id}.png">` 占位符在 API 写入步骤后**不会渲染成图片**，
-所以截图以附件形式挂在单据上，步骤里注明附件名；需要图片直接出现在正文时，可在禅道里手工插入一次。
-
-### 提单格式（统一要求：每条都必须带「接口 + 截图」）
+### 提单格式（接口单：接口 / 请求参数 / 接口返回 / 期望 / 实际；UI 单：额外带截图）
 
 **所有提单入口都走同一套模板**（`tools/evidence_bug.py`），生成的单据固定包含：
 
@@ -402,7 +397,8 @@ python run.py zentao --product 1 --module 393 --assignee Louie.lu --severity 2 -
 ### 实测结论（2026-11-13）
 
 - 创建 → 回读 → 删除 **全链路通过**：`module=393 / severity=3 / pri=3 / type=codeerror / openedBuild=主干 / assignedTo=Louie.lu` 均正确落库。
-- **附件走 REST 传不上去**：`POST /api.php/v1/files` 对 png/xlsx/txt 都返回"文件格式不在规定范围内"（服务端限制），所以模板把结果文件路径写进 `[备注]`，需要截图时人工补传。
+- **附件走 REST 传不上去**：`POST /api.php/v1/files` 对 png/xlsx/txt 都返回"文件格式不在规定范围内"（服务端限制）。
+  现在 UI 单的截图改走**页面表单上传**（`core/zentao_ui.py`，内部独立线程避免 Playwright 冲突）；接口单不配截图。
 - **删除是软删除**：`DELETE /api.php/v1/bugs/{id}` 返回 success，缺陷从列表消失，但 `GET /bugs/{id}` 仍能查到；要彻底清掉到后台回收站处理。
 - **修改要用 PUT**：`PUT /api.php/v1/bugs/{id}` 生效（`PATCH` 返回 200 但改不动），已封装成 `client.update_bug(id, title=..., severity=...)`。
 - 老版本 `api.php` 会话登录也保留了兜底（`api-getsessionid.json` 的 `data` 是字符串的兼容已处理）。
@@ -431,7 +427,11 @@ zt = ZentaoClient.from_env()
 zt.whoami(); zt.products(); zt.users()
 bug_id = zt.create_bug(
     title="【自动化-测试环境】xxx 失败：现象",
-    steps="<p><strong>[步骤]</strong></p><p>1. ...</p><p><strong>[结果]</strong></p><p>...</p>",
+    steps=("<p><strong>[步骤]</strong></p><p>1. ...</p>"
+           "<p><strong>[接口]</strong></p><p>POST https://.../importPayroll（HTTP 200）</p>"
+           "<p><strong>[请求参数]</strong></p><pre>{...}</pre>"
+           "<p><strong>[接口返回]</strong></p><pre>{\"code\":200}</pre>"
+           "<p><strong>[期望]</strong></p><p>...</p><p><strong>[实际]</strong></p><p>...</p>"),
     product=1, module=393, severity=3, pri=3, bug_type="codeerror",
     assigned_to="Louie.lu", feedback_by="Louie.lu", opened_build="trunk", keywords="自动化")
 zt.delete_bug(bug_id)     # 软删除（列表消失，后台可彻底删）
@@ -448,8 +448,10 @@ zt.delete_bug(bug_id)     # 软删除（列表消失，后台可彻底删）
    > 这三处如需回归验证，得跑对应的招聘平台全流程（会真实新建岗位/编制）。
 4. **token 约 2 小时过期**，需要定期更新 `.env`（或跑一次有头 UI 用例扫码刷新）。
 5. `test_test.xlsx`（调试项目）里有空行/空 sheet，lint 会告警，不影响其它项目。
-6. 禅道附件 REST 上传被服务端限制（png/xlsx 都拒），自动化提单暂不带附件。
-7. 禅道 REST 删除是软删除，验证用的测试单请到后台回收站彻底清理。
+6. **禅道附件 API 上传被服务端限制**（png/xlsx/txt 都被拒）：UI 单的截图改走**页面表单上传**
+   （`core/zentao_ui.py`），接口单按约定不配截图。
+7. **禅道 REST 删除是软删除**（列表消失、`GET /bugs/{id}` 仍可查）：验证过程产生的
+   9775 / 9776 / 9777 / 9781 / 9778 / 9783 需要到后台回收站彻底清理。
 
 ---
 
@@ -469,10 +471,16 @@ zt.delete_bug(bug_id)     # 软删除（列表消失，后台可彻底删）
 
 | 提交 | 内容 |
 | --- | --- |
-| `79ce7aa` | 合并 `api` 与 `ui_playwright` 为统一框架（core 公共层、统一 .env、统一入口、统一 reports、包命名空间 `api.*` / `ui.*`） |
-| `5c294ce` | 新增 `tools/lint_cases.py` + `selftest_lint.py`（用例静态检查，动作集合反射源码） |
+| `79ce7aa` | 合并 `api` 与 `ui_playwright` 为统一框架（core 公共层、统一 .env、统一入口、统一 reports、命名空间 `api.*` / `ui.*`） |
+| `5c294ce` | 新增用例静态检查 `tools/lint_cases.py` + 自测 `tools/selftest_lint.py`（动作集合反射源码） |
 | `e4da02a` | 薪资包管理按薪资包ID查询：接口方法 + `pkgquery` 动作 + UI 页面对象/定位器/用例 + UI 免扫码 token 注入 + `tools/ui_capture.py` |
 | `6a2b22a` | 支持 PyCharm 子目录直接运行（sys.path 引导）；修正采集工具多级菜单导航 |
-| `本次提交` | UI 存量 3 类问题修复（`${var}` → `{{var}}` 转义、`end_invoice_submit_2` → `after_onboarding_2`、维护版项目停用），lint 全量 **0 错误**；新增禅道提单能力：`core/zentao.py`（客户端）+ `tools/zentao_report.py`（失败聚合/草稿/提交）+ `run.py zentao` 子命令 |
+| `746143c` | 重写主 README（目录结构 / 配置全表 / 命令 / PyCharm / 用例清单 / 已知问题） |
+| `40c2de2` | UI 存量 3 类问题修复（`${var}`→`{{var}}` 转义、`end_invoice_submit_2`→`after_onboarding_2`、维护版项目停用），lint 归零；新增禅道客户端 `core/zentao.py` + `tools/zentao_report.py` + `run.py zentao` |
+| `f259b07` | 接入公司禅道（开源版 22.6）并按提单页重写字段：产品 1 / 模块 393 / 影响版本 `["trunk"]` / 反馈者 / 指派；创建→回读→删除闭环验证 |
+| `8a9001c` | 提单过滤规则（只提"断言失败 + 稳定复现"，`--repeat` 可调）；标题只取第一处断言；新增 `update_bug`（PUT 生效） |
+| `0cecaa2` | 证据驱动提单：`ui/utils/evidence.py` + `tools/evidence_bug.py`（含 `--attach-to` 补附件、附件去重）+ `core/zentao_ui.py`（页面表单上传附件）+ `tools/demo_pkg_search.py`；修复页面对象把 antd 占位行当数据行的问题 |
+| `3589c1b` | 提单格式统一：API/UI 用例失败自动采证据；两者共用同一模板；新增接口证据图渲染；分类器改为强断言特征优先 |
+| `4bccca7` | **接口单去掉截图**，正文改为「接口 / 请求参数 / 接口返回 / 期望 / 实际」结构（返回保留 `data` 字段）；UI 单保留页面截图 |
 
 > 原始两个框架（`D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright`）保持原样，可继续单独使用。
