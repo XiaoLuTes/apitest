@@ -22,3 +22,6 @@ report.log
 # ===== 绯荤粺 =====
 .DS_Store
 Thumbs.db
+
+# 运行期临时变量（每次执行会重写，不入库）
+api/variable/extract.yaml

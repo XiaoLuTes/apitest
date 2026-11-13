@@ -140,7 +140,7 @@ API_METHODS, API_SPECIAL_METHODS = api_method_sets()
 UI_ACTIONS, UI_NO_ELEMENT_ACTIONS = ui_action_sets()
 
 DB_METHODS = {"db_select", "db_update"}
-NO_URL_METHODS = DB_METHODS | {"editexcel"}
+NO_URL_METHODS = DB_METHODS | {"editexcel", "pkgquery"}
 API_REQUIRED_COLUMNS = ["case_id", "name", "headers", "method", "url", "data", "validata"]
 API_RECOMMENDED_COLUMNS = ["response", "result", "extract"]
 API_SHEET_NAMES = {"数据准备", "测试执行", "数据清理", "测试准备", "数据校验"}
@@ -258,6 +258,13 @@ def _api_validata_check(collector, method, validata, ctx):
             collector.warn(
                 "API-DB-ASSERT",
                 f"db_select 断言 [{text}] 可能无法识别，支持：字段=值 / count:n / count>:n / contains:x / empty", **ctx)
+        return
+
+    if method == "pkgquery":
+        # pkgquery 的断言是「字段=值[,字段=值]」，字段可以写变量名或接口字段名
+        if "=" not in text:
+            collector.error("API-PKGQUERY",
+                            f"pkgquery 的 validata 应为 字段=值[,字段=值]（如 pkg_status=0），当前：[{text}]", **ctx)
         return
 
     if method == "db_update":
@@ -457,6 +464,14 @@ def lint_api_file(path, collector, available):
                         collector.error("API-URL", "url 为空（请求会打到站点根路径）", **ctx)
                     if _is_blank(record.get("headers")):
                         collector.warn("API-HEADERS", "headers 为空，多数接口会返回 401/110106", **ctx)
+
+                # ---- pkgquery 会写入薪资包变量（pkg_id / pkg_code / ...），后续用例可直接引用 ----
+                if method == "pkgquery":
+                    try:
+                        from api.common.payroll_package import VARIABLE_FIELDS
+                        available.update(VARIABLE_FIELDS.keys())
+                    except Exception:      # noqa: BLE001
+                        available.update({"pkg_id", "pkg_code", "pkg_status"})
 
                 # ---- 断言 / 提取 / 重试 ----
                 _api_validata_check(collector, method, validata, ctx)

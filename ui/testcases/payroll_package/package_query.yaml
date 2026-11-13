@@ -1,0 +1,100 @@
+test_cases:
+
+# ============================================================================
+# Payroll → 算薪 → 薪资包管理：按薪资包ID查询
+# 页面：/center/payroll/payrollSalary/packageManagement
+# 前置：.env 的 ACCESS_TOKEN_ADMIN 有效（框架自动注入登录态，免扫码）
+# 实测数据（2026-11-13）：SAL-20261112-0001 / ON_CYCLE / 2026-11-FH /
+#   Lucas专用供应商 / Canada / 1 人 / 待发起算薪 / 系统创建
+# ============================================================================
+
+- id: 薪资包管理-01-按薪资包ID查询命中
+  name: 薪资包管理-按薪资包ID查询-SAL-20261112-0001 命中且字段正确
+  page: payroll_package_page
+  steps:
+    - step_name: 1、输入薪资包ID
+      element: pkg_code_input
+      action: input
+      data: 'SAL-20261112-0001'
+    - step_name: 2、点击搜索
+      element: search_button
+      action: click
+    - step_name: 3、等待列表刷出结果行
+      element: first_row_code
+      action: wait_exists
+    - step_name: 4、校验首行薪资包ID
+      element: first_row_code
+      action: check_text
+      data: 'SAL-20261112-0001'
+    - step_name: 5、校验薪资包类型
+      element: first_row_type
+      action: check_text
+      data: 'ON_CYCLE'
+    - step_name: 6、校验服务月份
+      element: first_row_service_month
+      action: check_text
+      data: '2026-11-FH'
+    - step_name: 7、校验供应商
+      element: first_row_supplier
+      action: check_text
+      data: 'Lucas专用供应商'
+    - step_name: 8、校验国家/地区
+      element: first_row_country
+      action: check_text
+      data: 'Canada'
+    - step_name: 9、校验员工人数
+      element: first_row_employee_count
+      action: check_text
+      data: '1'
+    - step_name: 10、校验状态
+      element: first_row_status
+      action: check_text
+      data: '待发起算薪'
+    - step_name: 11、校验分页总数为 1 条
+      element: pagination_total
+      action: check_text
+      data: '总共 1 条'
+
+- id: 薪资包管理-02-查询不存在的薪资包ID
+  name: 薪资包管理-查询不存在的薪资包ID-列表为空
+  page: payroll_package_page
+  steps:
+    - step_name: 1、输入不存在的薪资包ID
+      element: pkg_code_input
+      action: input
+      data: 'SAL-19990101-9999'
+    - step_name: 2、点击搜索
+      element: search_button
+      action: click
+    - step_name: 3、等待空数据提示
+      element: table_empty
+      action: wait_exists
+    - step_name: 4、校验提示「暂无数据」
+      element: table_empty
+      action: check_text
+      data: '暂无数据'
+
+- id: 薪资包管理-03-重置查询条件后列表恢复
+  name: 薪资包管理-重置查询条件-列表恢复为全量
+  page: payroll_package_page
+  steps:
+    - step_name: 1、先按不存在的ID查询，制造空列表
+      element: pkg_code_input
+      action: input
+      data: 'SAL-19990101-9999'
+    - step_name: 2、点击搜索
+      element: search_button
+      action: click
+    - step_name: 3、等待空数据提示
+      element: table_empty
+      action: wait_exists
+    - step_name: 4、点击重置
+      element: reset_button
+      action: click
+    - step_name: 5、等待列表恢复出数据行
+      element: first_row_code
+      action: wait_exists
+    - step_name: 6、校验分页统计出现（说明拿到全量数据）
+      element: pagination_total
+      action: check_text
+      data: '总共'

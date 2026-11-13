@@ -27,6 +27,7 @@ class Setting:
             "假勤审批人为空": "testcase/test_leave_empty_approver.xlsx",
             "审批流员工标签": "testcase/test_approval_employee_tag.xlsx",
             "薪资包结算": "testcase/test_payroll_salary_package_offcycle.xlsx",
+            "薪资包管理查询": "testcase/test_payroll_package_query.xlsx",
         }
         # 项目名解析优先级：API_PROJECT > CURRENT_PROJECT
         # （CURRENT_PROJECT 是 UI 项目名时接口侧忽略，方便两个用例集共用一个 .env）

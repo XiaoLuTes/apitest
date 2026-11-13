@@ -1,0 +1,66 @@
+# ============================================================================
+# Payroll → 算薪 → 薪资包管理（/center/payroll/payrollSalary/packageManagement）
+# 采集时间：2026-11-13，采集方式：现场抓 DOM（tools/ui_capture.py + 探针脚本）
+# 说明：框架查找元素是「全局扫描所有页面节点」(base_page.find_element_page)，
+#       节点名与 PAGE_NAME 一致（payroll_package_page）
+# ============================================================================
+payroll_package_page:
+  # ---------- 查询条件 ----------
+  pkg_code_input:            # 薪资包ID 输入框
+    by: "id"
+    value: "payrollSalaryPackageCode"
+  settlement_code_input:     # 结算包ID 输入框
+    by: "id"
+    value: "settlementPackageCode"
+  pkg_type_select:           # 薪资包类型 下拉
+    by: "id"
+    value: "payPagType"
+  supplier_select:           # 供应商名称 下拉
+    by: "id"
+    value: "supplierId"
+  country_select:            # 国家/地区 下拉
+    by: "id"
+    value: "country"
+  status_select:             # 状态 下拉
+    by: "id"
+    value: "payrollStatus"
+
+  # ---------- 操作按钮（antd 两个汉字会插空格：'搜 索' / '重 置'，所以用 contains 匹配）----------
+  search_button:             # 搜索
+    by: "xpath"
+    value: "//button[contains(normalize-space(.),'搜')]"
+  reset_button:              # 重置
+    by: "xpath"
+    value: "//button[contains(normalize-space(.),'重')]"
+
+  # ---------- 列表 ----------
+  salary_table:              # 表格容器
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table')]"
+  table_empty:               # 空数据提示（暂无数据）
+    by: "xpath"
+    value: "//div[contains(@class,'ant-table')]//div[contains(@class,'ant-empty-description')]"
+  first_row_code:            # 首行：薪资包ID
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[1]"
+  first_row_type:            # 首行：薪资包类型
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[2]"
+  first_row_service_month:   # 首行：服务月份
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[3]"
+  first_row_supplier:        # 首行：供应商名称
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[4]"
+  first_row_country:         # 首行：国家/地区
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[5]"
+  first_row_employee_count:  # 首行：员工人数
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[6]"
+  first_row_status:          # 首行：状态
+    by: "xpath"
+    value: "(//div[contains(@class,'ant-table')]//tbody/tr[contains(@class,'ant-table-row')])[1]/td[8]"
+  pagination_total:          # 分页统计（第 1-1 条/总共 1 条）
+    by: "xpath"
+    value: "//li[contains(@class,'ant-pagination-total-text')]"

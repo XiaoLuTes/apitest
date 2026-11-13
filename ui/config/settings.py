@@ -63,6 +63,13 @@ class Settings:
                 "ELEMENT_LOCATORS": "./config/locators/pt_new_position_v2.yaml",
                 "description": "招聘平台新建岗位全流程（维护版，重新采集元素）"
             },
+            "薪资包管理查询": {
+                "PAGE_NAME": ["payroll_package_page"],  # 页面对象
+                "TESTCASES_PATH": "./testcases/payroll_package/package_query.yaml",  # 测试用例路径
+                "ELEMENT_LOCATORS": "./config/locators/payroll_package_management.yaml",  # 元素定位器路径
+                "description": "Payroll-算薪-薪资包管理：按薪资包ID查询（接口 + UI 双层）",
+                "LOADING_SELECTOR": "#loader-wrapper"
+            },
             "薪资结算包收款包链路": {
                 "PAGE_NAME": ["gsr_admin_page"],
                 "TESTCASES_PATH": "./testcases/eor_salary_ettlement/salary_payment_collection_v2.yaml",
@@ -74,12 +81,14 @@ class Settings:
         # 页面url映射
         self.PAGE_URLS = {
             "gsr_admin_page": self.URL,  # 管理端首页URL（导航时自动登录）
+            "payroll_package_page": self.URL.rstrip("/") + "/center/payroll/payrollSalary/packageManagement",
             "login_page": self.URL  # 登录页URL（不做自动登录，用于显式测试登录表单）
             # 可以继续添加其他页面的URL配置...
         }
         # 页面类映射
         self.PAGE_CLASSES = {
-            "gsr_admin_page": "GsrAdminPage"
+            "gsr_admin_page": "GsrAdminPage",
+            "payroll_package_page": "PayrollPackagePage"
         }
         # 获取当前项目
         # 项目名解析优先级：UI_PROJECT > CURRENT_PROJECT（两个用例集共用一份 .env）
@@ -129,6 +138,13 @@ class Settings:
         self.DB_PASSWORD = self._get_env_var("DB_PASSWORD", '')
         self.DB_PORT = self._get_env_var("DB_PORT", '')
         self.DB_NAME = self._get_env_var("DB_NAME", '')
+
+        # ===================== 登录态：免扫码 token 注入 =====================
+        # .env 的 ACCESS_TOKEN_ADMIN（浏览器登录后 GSR-Token cookie 的值）直接注入浏览器，
+        # 跳过企业微信扫码；token 失效时自动回落到扫码流程。UI_LOGIN_BY_TOKEN=false 可关闭。
+        self.ACCESS_TOKEN_ADMIN = self._get_env_var("ACCESS_TOKEN_ADMIN", "")
+        self.LOGIN_BY_TOKEN = self._get_env_var("UI_LOGIN_BY_TOKEN", "true").strip().lower() in (
+            "true", "1", "yes", "y", "on")
 
         # ===================== Playwright 配置 =====================
         self.BROWSER = self._get_env_var("BROWSER", "chrome")  # chromium / firefox / webkit

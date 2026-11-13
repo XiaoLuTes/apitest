@@ -121,7 +121,62 @@ python tools/selftest_lint.py            # lint 自身的回归自测（验证�
 - 接口用例集：`api/README.md`（Excel 列定义、动作表、断言、变量、薪资包相关动作等）
 - UI 用例集：`ui/README.md`（YAML 步骤、动作、元素定位、扫码登录等）
 
-## 6. 说明
+## 6. UI 登录态：token 注入免扫码（推荐）
+
+UI 用例集的登录原本是「企业微信扫码 + cookie 复用」。现在支持直接用 .env 的 `ACCESS_TOKEN_ADMIN` 注入登录态，**免扫码**：
+
+```powershell
+python run.py ui 薪资包管理查询 --headless     # 无头也能跑，不需要扫码
+```
+
+实现：`ui/utils/browser.py` 的 `_inject_token()`，把 token 写成 `GSR-Token` cookie 再开页面。
+要点（实测踩过的坑）：
+
+- token 模式下**不再加载** `reports/auth/*.json` 旧登录态，否则请求会带上过期会话的 cookie，服务端按旧会话鉴权 → `110106 没有访问权限`。
+- 新扫码建立的会话反而可能缺 `center:payrollSalaryPackage:list` 权限；.env 里的 token 权限是完整的。
+- token 约 2 小时过期（`ACCESS_TOKEN_ADMIN` 从浏览器 `GSR-Token` cookie 拷），过期后会自动回落到扫码流程。
+- 关闭开关：`.env` 里 `UI_LOGIN_BY_TOKEN=false`。
+
+## 7. 示例用例集：薪资包管理查询（接口 + UI 双层）
+
+需求：管理端 → Payroll → 算薪 → 薪资包管理，按「薪资包ID」查询。
+
+| 层 | 项目名 | 用例文件 | 数量 | 覆盖 |
+| --- | --- | --- | --- | --- |
+| 接口 | `薪资包管理查询` | `api/testcase/test_payroll_package_query.xlsx` | 10（准备1+执行8+清理1） | 按ID查询命中/不存在/组合条件/结算包ID/框架方法/变量传递/未鉴权 |
+| UI | `薪资包管理查询` | `ui/testcases/payroll_package/package_query.yaml` | 3 | 按ID查询命中（校验类型/月份/供应商/国家/人数/状态/分页）/不存在时暂无数据/重置恢复 |
+
+```powershell
+python run.py api 薪资包管理查询
+python run.py ui 薪资包管理查询 --headless
+```
+
+框架里新增的可复用能力：
+
+- 接口：`api/common/payroll_package.py`
+  `query_salary_packages(**filters)` / `get_salary_package(code)` / `require_salary_package(code)` /
+  `package_variables(row)` / `assert_row_fields(row, "字段=值,字段=值")`
+- 接口用例动作：`method: pkgquery`（data `{"code":"SAL-...","filters":{}}`，validata 写 `pkg_status=0,pkg_country=Canada`），
+  查询成功后把 `pkg_id/pkg_code/pkg_status/pkg_country/...` 写进变量供后续用例引用。
+- UI：`ui/pages/payroll_package_page.py`（`open_package_management()` / `query_by_package_code(code)` /
+  `get_row_by_code(code)` / `assert_package_row(code, 状态="待发起算薪")` / `assert_empty()`），
+  定位器在 `ui/config/locators/payroll_package_management.yaml`。
+
+## 8. 现场采集工具（找元素）
+
+```powershell
+# 按菜单路径导航并导出候选定位器 + 截图 + HTML（登录态失效时会等你扫码）
+python tools/ui_capture.py --menu "Payroll/薪资包管理"
+# 直接打开指定 URL
+python tools/ui_capture.py --url https://test-admin.gsrtech.com/center/payroll/payrollSalary/packageManagement
+# 顺带验证按关键字搜索的结果
+python tools/ui_capture.py --url <URL> --query SAL-20261112-0001
+```
+
+产物写到 `reports/_probe/`：输入框（含 form-item 标签）、按钮、表头、首行单元格、页面 HTML。
+后续丢需求给我时，我用它现场采集元素，再写进定位器 YAML。
+
+## 9. 说明
 
 - 原有独立框架（`D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright`）保持原样，可继续单独使用；本仓库是合并后的新框架。
 - 所有路径都基于 `core/paths.py` 计算成绝对路径，因此在 PyCharm 里直接运行某个测试文件、或在任意目录执行 `python D:\lu\pycharm\autotest\run.py api ...` 都能正确定位用例与报告。

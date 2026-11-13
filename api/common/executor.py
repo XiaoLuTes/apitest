@@ -4,7 +4,7 @@ from typing import Any
 import allure
 import pytest
 from api.config.setting import setting
-from api.common import request_util, excel_read, run_state, file_util, yaml_util, retry, payroll_util
+from api.common import request_util, excel_read, run_state, file_util, yaml_util, retry, payroll_util, payroll_package
 from api.common.logger import logger
 from api.common.variable_handle import ExtractValueError, UpstreamDependencyError, VariableHandle, VariableNotFoundError
 from api.common.database import DatabaseUtils
@@ -125,6 +125,29 @@ class Executor:
                 if not isinstance(edit_cells, dict) or not edit_cells:
                     raise ValueError(f"用例 {case_id} 的 editexcel 缺少 cells，格式：{{\"单元格\": 值}}")
                 file_util.edit_excel_by_wps(edit_file, edit_cells, data.get('sheet'))
+            elif method == 'pkgquery':
+                # 薪资包管理：按薪资包ID查询，把记录写进变量，并用 validata 做字段断言
+                # data = {"code": "SAL-20261112-0001", "filters": {...}}（filters 可省略）
+                if not isinstance(data, dict):
+                    raise ValueError(
+                        f"用例 {case_id} 的 pkgquery data 必须是 JSON 对象，如 {{\"code\": \"SAL-...\"}}")
+                pkg_code = str(data.get('code') or data.get('payrollSalaryPackageCode') or '').strip()
+                if not pkg_code:
+                    raise ValueError(f"用例 {case_id} 的 pkgquery 缺少 code（薪资包ID）")
+                extra_filters = {k: v for k, v in data.items() if k not in ('code', 'filters')}
+                extra_filters.update(data.get('filters') or {})
+                row = payroll_package.get_salary_package(pkg_code, **extra_filters)
+                if row is None:
+                    raise AssertionError(f"未查询到薪资包：{pkg_code}")
+                variables = payroll_package.package_variables(row)
+                yaml_util.write_yaml({k: ('' if v is None else v) for k, v in variables.items()})
+                logger.info(f"薪资包 {pkg_code} 查询成功，写入变量：{variables}")
+                if validata:
+                    details = payroll_package.assert_row_fields(row, validata, case_id=case_id)
+                    logger.info("字段断言通过：" + "；".join(details))
+                excel_read.Excel.record_result(self.fileload, sheet, row_num,
+                                               file.get('response_col'),
+                                               json.dumps(row, ensure_ascii=False, default=str))
             elif method == 'db_select':
                 self._db_utils.verify_mysql_data(data, validata)
             elif method == 'db_update':
