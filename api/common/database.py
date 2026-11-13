@@ -29,7 +29,19 @@ class DatabaseUtils:
         self.connection = None
         self._initialized = True
 
+    def _assert_env_allowed(self):
+        """数据库操作环境护栏：只允许 DB_ALLOWED_ENVS 里的环境（默认仅测试环境）"""
+        raw = str(getattr(setting, "DB_ALLOWED_ENVS", "测试环境") or "测试环境")
+        allowed = [e.strip() for e in raw.split(",") if e.strip()]
+        current = str(getattr(setting, "ENV", "") or "")
+        if current not in allowed:
+            raise RuntimeError(
+                f"[数据库操作已拦截] 当前环境 ENV={current!r} 不在允许范围 {allowed}；"
+                "按项目约束只有测试环境可以连接数据库（AGENTS.md 第 5 节）")
+        return True
+
     def connect(self):
+        self._assert_env_allowed()
         """建立数据库连接"""
         # 配置缺失时给出明确提示（数据库密码等敏感配置放在项目根目录的 .env 里，不入库）
         missing = [name for name, value in (("DB_HOST", self.host), ("DB_USER", self.user),
@@ -95,6 +107,8 @@ class DatabaseUtils:
             raise
 
     def execute_update(self, sql: str, params=None) -> int:
+        # 写操作审计：执行日志里要能对上号（AGENTS.md 5.2：写库需提前确认并留痕）
+        logger.warning(f"[DB写操作] {str(sql).strip()[:200]}")
         """执行更新语句"""
         try:
             self.connect()

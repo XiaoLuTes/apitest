@@ -108,6 +108,9 @@ class Setting:
         self.DB_PORT = self._get_env_var("DB_PORT", '')
         self.DB_NAME = self._get_env_var("DB_NAME", '')
         self.DB_TIMEOUT = int(self._get_env_var("DB_TIMEOUT", "30"))
+        # 允许执行数据库操作的环境白名单（逗号分隔）：默认只有测试环境
+        # 详见 AGENTS.md 第 5 节「数据库操作约束」
+        self.DB_ALLOWED_ENVS = self._get_env_var("DB_ALLOWED_ENVS", "测试环境")
 
         # 需要从 .env / 环境变量注入成运行期变量的敏感配置（值取自同名环境变量，通常写在 .env 里）
         # 会话开始时会写入 variable/extract.yaml，用例里可直接用 ${键名} 引用

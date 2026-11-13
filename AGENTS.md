@@ -30,6 +30,7 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 - `.env` 是唯一配置入口（含 `ACCESS_TOKEN_ADMIN`、`ZENTAO_*`、`DB_*`）；**不要写进 git**。
 - `ACCESS_TOKEN_ADMIN` 约 2 小时过期。接口报 401/110106、UI 跳登录页 = token 过期，**先让用户更新 `.env`**，别去猜代码问题。
 - 单条命令超 120 秒时用后台跑（`Start-Process ... -RedirectStandardOutput reports\run_out.txt`）再轮询，别让命令超时。
+- **先确认 `ENV`**：只有 `测试环境` 允许连数据库（见第 5 节）；不是测试环境就先停下来问用户。
 
 ---
 
@@ -72,6 +73,7 @@ python run.py zentao --probe # 禅道是否通（提单前才需要）
 - **`场景` + `场景说明` 必填且要写实**：场景 = `模块｜子场景` 分组名；场景说明 = `前置 + 操作 + 预期`，把具体单据号/字段值写进去（评审与提单都引用这两列，lint 会对缺失给出告警）
 - `name` 以「管理端｜/员工端｜」开头（决定请求打哪个 host）
 - 断言 `validata` 写 JSON：`{"$.code": 200, "$.data.id": "..."}`；DB 断言用 `db_select` + `字段=值`
+- **涉及写库（`db_update` / delete / insert）必须在写用例前按第 5 节向用户确认**，未经确认不许写进用例
 - 详细动作与写法：`README.md` 第 8 节 + `api/README.md`
 - 注册项目：`api/config/setting.py` 的 `TEST_FLIELOADS` 加一行
 
@@ -170,7 +172,7 @@ python run.py zentao --submit --yes      # 人工确认后再执行
 | `method` | ✅ | `GET/POST/PUT/DELETE/PATCH` + 专用动作 `db_select/db_update/download/editexcel/upload/payrollconfirm/pkgquery` |
 | `url` | ✅ | 相对路径，host 由 `name` 的端前缀决定；`db_*`/`editexcel`/`pkgquery` 可留空 |
 | `data` | ✅ | 普通接口 = 参数 JSON；`db_*` = **SQL**；`download` = `{"dir","var"}`；`editexcel` = `{"file","cells"或"index_cells"}` |
-| `validata` | ✅ | 普通接口 = JSON `{"$.code":200,"$.rows[0].id":"${demo_id}"}`；`db_select` = `字段=值`；`db_update` = 影响行数；`pkgquery` = `字段=值` |
+| `validata` | ✅ | 普通接口 = JSON `{"$.code":200,"$.rows[0].id":"${demo_id}"}`；`db_select` = `字段=值`；`db_update` = 影响行数（写库前需用户确认，见第 5 节）；`pkgquery` = `字段=值` |
 | `response` | 建议 | 框架回写返回原文，排障用 |
 | `extract` | 按需 | `{"变量名":"$.path"}`，产出给后续用例 `${变量名}` |
 | `retry` | 按需 | **只认纯数字或 dict**（如 `5`）；用于异步状态流转，不许用来掩盖真实失败 |
@@ -230,8 +232,58 @@ test_cases:                     # 固定根节点
 6. 报告目录（`reports/`）不进 git；`api/variable/extract.yaml` 是运行期产物，也不入库。
 7. 遇到不确定的环境/权限现象：**报告用户**（附错误码与证据），不要改断言去"迁就"环境。
 8. **资料归档**：用户给的接口文档/表结构/PRD 一律放 `docs/项目资料/<项目>/<类别>/`，文件名 `YYYYMMDD-来源-主题.扩展名`，并在该项目 `README.md` 的「已收录清单」补一行；新增**项目数据/单据号**登记到 `<项目>/测试数据/README.md`，新增**公共数据**（账号、客户、供应商、DB 表）登记到 `公共/测试数据.md`；失效的标 `❌失效` 而不是删行。
+9. **数据库**：只有测试环境可连库（含只读）；`db_update`/delete/insert 必须在**用例拆分阶段**先经用户确认，并配恢复方案——细则见第 5 节。
 
-## 5. 常见任务索引
+## 5. 数据库操作约束（硬性，违反即拒绝执行）
+
+### 5.1 只有测试环境允许连库
+
+| 环境 | 是否允许 | 说明 |
+| --- | --- | --- |
+| 测试环境（`ENV=测试环境`，`https://test-admin.gsrtech.com`） | ✅ 允许 | 只有这一套库可以连 |
+| 预生产 / 生产 / UAT / 客户演示环境 | ❌ 禁止 | **包括只读查询**，不是"只读就没事" |
+
+判定顺序：`.env` 的 `ENV` → `api/config/setting.py` 的 `ENV` → 接口/页面 host。任一显示非测试环境 → 视为不允许。
+代码护栏：`api/common/database.py::connect()` 会校验 `setting.DB_ALLOWED_ENVS`（默认 `测试环境`），
+不在白名单直接抛错。**不要为了跑通去改这个白名单或绕开 connect()。**
+环境不确定时先问用户，不要试探。
+
+### 5.2 写操作必须在「用例拆分阶段」先问用户
+
+写操作 = `INSERT` / `UPDATE` / `DELETE` / 任何 DDL。
+
+- **时机**：阶段 1/2，**写进用例文件之前**就问，不是执行时才补一句。
+- **要说明**：目标表、影响范围（where 条件）、改动前后值、是否影响其他客户/其他用例、出错如何恢复。
+- **确认物**：用户明确回复"可以"，并把该写操作登记到 `docs/requirements/<需求>.md` 的「数据与前置」节。
+- **一律禁止**：无 `where` 的全表增删改、`ALTER` / `DROP` / `TRUNCATE`、修改真实客户数据、跨客户批量改。
+- **执行时**：日志会打 `[DB写操作]` 前缀，报告里要能对上号；跑完必须按清理方案恢复。
+
+### 5.3 只读查询也有限制
+
+- 只针对测试环境；避免大表 `SELECT *`（带 `where` / `limit`）。
+- 查出来的真实客户名、员工姓名、证件号等**不要原样写进缺陷单/文档**，必要时打码。
+
+### 5.4 标准确认话术（AI 必须先说这段，再写用例）
+
+```
+本次用例需要写数据库，请确认：
+- 表：gsr_xxx（主键 xxx_id）
+- 操作：UPDATE gsr_xxx SET yyy='...' WHERE xxx_id=...
+- 影响：预计 N 行（客户 528 / 单据 SAL-...）；是否影响其他客户：否
+- 恢复：执行后改回原值 / 已配清理用例：<用例ID>
+- 环境：测试环境（ENV=测试环境）
+确认可以写吗？
+```
+
+### 5.5 直接拒绝的情形
+
+1. 环境不是测试环境；
+2. 写操作未经用户确认，或没有恢复方案；
+3. SQL 没有 `where`、是 DDL、或跨客户批量修改。
+
+遇到以上任一情况：**拒绝执行并说明原因**，不许"先跑后解释"。
+
+## 6. 常见任务索引
 
 | 任务 | 去哪里改 |
 | --- | --- |
@@ -246,7 +298,7 @@ test_cases:                     # 固定根节点
 | 采集证据（自定义场景） | `ui/utils/evidence.py::EvidenceRecorder`，参考 `tools/demo_pkg_search.py` |
 | 看报告 | `reports/`（allure-results / results / logs / screenshots / evidence / zentao） |
 
-## 6. 已知坑（踩过的，别再踩）
+## 7. 已知坑（踩过的，别再踩）
 
 | 现象 | 真相 / 处理 |
 | --- | --- |
@@ -262,7 +314,7 @@ test_cases:                     # 固定根节点
 | `conditionalActivation` 导致审批流不生效 | 假勤模板 deploy 时必须传 `0` |
 | `${var}` 在 UI 用例里不生效 | UI 只认 `{var}`；要字面量写 `{{var}}`（`VariableStore.render` 支持转义） |
 
-## 7. 文档地图
+## 8. 文档地图
 
 | 文件 | 用途 |
 | --- | --- |
@@ -277,7 +329,7 @@ test_cases:                     # 固定根节点
 | `docs/项目资料/<项目>/` | 接口文档 / 数据库表结构 / 需求文档 / 测试数据（含 `测试数据/README.md`） |
 | `docs/需求拆分模板.md` / `docs/用例编写模板.md` | 阶段 1 / 阶段 2 的产物模板 |
 
-## 8. 交付汇报模板（每次任务结束按这个回）
+## 9. 交付汇报模板（每次任务结束按这个回）
 
 ```text
 1) 需求/范围：<需求名>，覆盖 R1..Rn；未覆盖：<项 + 原因>
