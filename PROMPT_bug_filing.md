@@ -57,7 +57,7 @@
 | --- | --- |
 | `title` | `【自动化-<环境>】<用例名>：<现象>`，≤255 字符，只取**第一处**断言现象，不塞整段错误 |
 | `product` | 固定 `1`（GSR OMNI） |
-| `module` | 固定 `393`（`/Payroll&结算`），不得留 0 |
+| `module` | **按项目分流**：payroll `393`（`/Payroll&结算`）、假勤 `392`（考勤/假勤）；判定看项目名/结果文件名/用例名关键词，`--module <id>` 可覆盖；不得留 0 |
 | `severity` | `1~4`，默认定 `3`（一般）；只有业务完全不可用才定 `1` |
 | `pri` | `1~4`，默认定 `3`（中） |
 | `type` | `codeerror`（代码错误，默认）/ `codeimprovement`（改进建议）/ `others` |
@@ -75,7 +75,7 @@
 2. **改单**：`PUT /api.php/v1/bugs/{id}` 生效；`PATCH` 返回 200 但改不动。
 3. **删除**：`DELETE` 是软删除（列表消失、`GET /bugs/{id}` 仍可查）；彻底清理只能到后台回收站。
 4. **内联图片**：`<img src="{文件id}.png">` 通过 API 写入 `steps` **不会渲染**；截图只能作附件，正文注明文件名。
-5. **模块接口**：`/api.php/v1/products/{id}/modules` 返回 404，模块 id 只能从提单页 URL（`moduleID=393`）取。
+5. **模块接口**：`/api.php/v1/products/{id}/modules` 返回 404；模块 id 由 `ZENTAO_MODULE_PAYROLL`(393) / `ZENTAO_MODULE_ATTENDANCE`(392) 提供（历史上是反推自存量缺陷的模块分布）。
 6. **鉴权**：账号密码换 token（`POST /api.php/v1/tokens`），每次执行自动换，不需要人工维护；
    与业务平台的 `ACCESS_TOKEN_ADMIN` 无关。
 7. **格式唯一入口**：单据格式只在 `tools/evidence_bug.py::build_steps_html()` 定义，
@@ -87,7 +87,8 @@
 1) 执行用例：python run.py api <项目名> / python run.py ui <项目名> --headless
    → 失败自动落证据：reports/evidence/*.json（+ UI 截图 reports/screenshots/UI失败-*.png）
 
-2) 出草稿：python run.py zentao  [--from <结果文件>]  [--repeat 2]
+2) 出草稿：python run.py zentao  [--from <结果文件>]  [--repeat 2]  [--allow-stale]
+   → 只认最近一次执行（reports/last_run.json），打印「X 小时前」；超过保鲜期 24h 直接拒绝
    → 打印每条：用例 / 判定（ASSERT|ENV|CASE）/ 历史失败次数 / 接口 / 截图
    → 草稿：reports/zentao/*.md、*.xlsx（含标题、全部字段、重现步骤）
 

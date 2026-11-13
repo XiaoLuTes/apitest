@@ -22,6 +22,7 @@ import glob
 import json
 import os
 import re
+import time
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -113,7 +114,13 @@ def latest_result_files():
 
 
 def collect_failures(source=None):
-    files = [source] if source else [f for f in latest_result_files() if f]
+    """source 可以是单个文件、文件列表或 None（默认取最近一次执行的结果）"""
+    if source is None:
+        files = [f for f in latest_result_files() if f]
+    elif isinstance(source, (list, tuple)):
+        files = list(source)
+    else:
+        files = [source]
     failures = []
     for path in files:
         if not os.path.isfile(path):
@@ -310,10 +317,75 @@ def probe():
 # ============================================================================
 
 
+
+
+# ============================================================================
+# 结果来源：只认本次执行（reports/last_run.json），过期需 --allow-stale
+# ============================================================================
+ATTENDANCE_KEYWORDS = ("假勤", "请假", "加班", "销假", "考勤", "审批流", "审批条件", "排班",
+                       "leave", "attendance", "overtime", "holiday")
+
+
+def resolve_module(explicit, hint_text):
+    """模块按项目分流：payroll → 393（结算/收款），假勤 → 392（考勤/假勤）"""
+    payroll_module = int(os.getenv("ZENTAO_MODULE_PAYROLL", os.getenv("ZENTAO_MODULE", "393")))
+    attendance_module = int(os.getenv("ZENTAO_MODULE_ATTENDANCE", "392"))
+    if explicit:
+        return int(explicit), "命令行 --module"
+    text = hint_text or ""
+    if any(k in text for k in ATTENDANCE_KEYWORDS):
+        return attendance_module, "项目/用例关键词命中「假勤」类"
+    return payroll_module, "默认 payroll"
+
+
+def resolve_sources(args):
+    """返回 (files, hint_text)；结果过期且未 allow_stale 时返回 ([], hint)"""
+    from core.last_run import print_record, read_last_run
+
+    if args.source:
+        return [args.source], os.path.basename(args.source)
+
+    record, age = read_last_run()
+    if record:
+        print_record(record, age)
+        files = [f for f in (record.get("results") or []) if os.path.isfile(f)]
+        hint = "%s %s" % (record.get("project") or "",
+                          " ".join(os.path.basename(f) for f in files))
+        if age > args.max_age_hours and not args.allow_stale:
+            print("=" * 78)
+            print("[结果过期] 本次执行结果是 %.1f 小时前的（保鲜期 %.0f 小时）"
+                  % (age, args.max_age_hours))
+            print("  → 想提单请先重跑：python run.py <api|ui> <项目名>")
+            print("  → 确认要用旧结果：加 --allow-stale，或 --from <结果文件>")
+            print("=" * 78)
+            return [], hint
+        if not files:
+            print("[结果] 本次执行没有产生结果文件（可能全部跳过），改用文件时间取最新")
+            return latest_result_files(), hint
+        return files, hint
+
+    files = [f for f in latest_result_files() if f]
+    hint = " ".join(os.path.basename(f) for f in files)
+    if files:
+        newest = max(os.path.getmtime(f) for f in files)
+        age = (time.time() - newest) / 3600.0
+        print("[提示] 没有 last_run.json（可能是旧版本执行的），按文件时间取最新：%.1f 小时前" % age)
+        if age > args.max_age_hours and not args.allow_stale:
+            print("[结果过期] 超过保鲜期 %.0f 小时，重跑或加 --allow-stale" % args.max_age_hours)
+            return [], hint
+    return files, hint
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="执行结果 → 禅道提单（步骤/接口/截图齐全）")
     parser.add_argument("--probe", action="store_true", help="探测禅道连通性")
-    parser.add_argument("--from", dest="source", default="", help="指定结果文件（默认取最新）")
+    parser.add_argument("--from", dest="source", default="", help="指定结果文件（默认取本次执行结果）")
+    parser.add_argument("--module", type=int, default=0,
+                        help="覆盖禅道模块 id（默认按项目分流：payroll=393 / 假勤=392）")
+    parser.add_argument("--max-age-hours", type=float,
+                        default=float(os.getenv("ZENTAO_RESULT_MAX_AGE_HOURS", "24")),
+                        help="结果保鲜期（小时），默认 24")
+    parser.add_argument("--allow-stale", action="store_true", help="结果过期也允许提单")
     parser.add_argument("--repeat", type=int, default=int(os.getenv("ZENTAO_REQUIRE_REPEAT", "2")),
                         help="稳定性要求：历史失败次数 >= 该值（默认 2）")
     parser.add_argument("--include-env", action="store_true", help="同时提交环境类失败")
@@ -329,7 +401,11 @@ def main(argv=None):
     if args.probe:
         return probe()
 
-    failures, files = collect_failures(args.source or None)
+    source_files, hint = resolve_sources(args)
+    if not source_files:
+        print("[结束] 没有可用的执行结果，未生成草稿")
+        return 2
+    failures, files = collect_failures(source_files)
     if not failures:
         print("没有找到失败用例（先跑一遍用例，或用 --from 指定结果文件）")
         return 0
@@ -362,6 +438,7 @@ def main(argv=None):
         print("[安全拦截] 未加 --yes，且 ZENTAO_AUTO_SUBMIT 不是 true → 只出草稿")
 
     print(f"\n准备提单 {len(accepted)} 条（每条都会带：步骤 / 接口请求返回 / 截图）\n")
+    created_bugs = []
     for item in accepted:
         evidence = build_evidence(item)
         print("-" * 70)
@@ -373,12 +450,28 @@ def main(argv=None):
         print(f"接口：{(picked[0].get('url') if picked else '（证据里没有接口记录）')}")
         print(f"截图：{'、'.join(os.path.basename(p) for p in evidence.get('screenshots') or []) or '（无）'}")
         if will_submit:
-            evidence_bug.file_bug(evidence, submit=True, severity=args.severity, pri=args.pri,
-                                  bug_type=args.bug_type)
+            hint_all = hint + " " + " ".join(x['name'] for x in accepted)
+            module, module_reason = resolve_module(args.module, hint_all)
+            print(f"[模块] {module}（{module_reason}）")
+            bug_id = evidence_bug.file_bug(evidence, submit=True, severity=args.severity,
+                                          pri=args.pri, bug_type=args.bug_type, module=module)
+            if bug_id:
+                created_bugs.append(bug_id)
         else:
             md = evidence_bug.write_draft(evidence, evidence_bug.build_steps_html(evidence),
                                           evidence_bug.build_title(evidence))
             print(f"草稿：{md}")
+
+    if args.delete_on_verify and created_bugs:
+        from core.zentao import ZentaoClient
+        client = ZentaoClient.from_env()
+        client.login()
+        for bug_id in created_bugs:
+            try:
+                client.delete_bug(bug_id)
+                print(f"[自检] 已删除 #{bug_id}（--delete-on-verify）")
+            except Exception as e:                       # noqa: BLE001
+                print(f"[自检] 删除 #{bug_id} 失败：{e}")
 
     if not will_submit:
         print("\n未提交（草稿模式）。核对无误后：python run.py zentao --submit --yes")

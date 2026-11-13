@@ -314,7 +314,7 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 | 字段 | 取值 | 来源 |
 | --- | --- | --- |
 | 所属产品 | `1` — GSR OMNI | 禅道唯一产品 |
-| 所属模块 | `393` — `/Payroll&结算` | 提单页 URL `moduleID=393` |
+| 所属模块 | payroll `393`（`/Payroll&结算`）· 假勤 `392`（考勤/假勤） | 按项目自动分流（`ZENTAO_MODULE_PAYROLL` / `ZENTAO_MODULE_ATTENDANCE`），`--module` 可覆盖 |
 | 严重程度 | `3` — 一般 | 提单页默认值 |
 | 优先级 | `3` — 中 | 提单页默认值 |
 | Bug 类型 | `codeerror` — 代码错误 | 公司存量缺陷绝大多数是它 |

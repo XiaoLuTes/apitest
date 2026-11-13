@@ -80,8 +80,9 @@ def _business_base():
     try:
         from api.config.setting import setting
         base = setting.TEST_URL
-        if isinstance(base, dict):                 # TEST_URL 是 {环境: 地址}
-            return base.get(setting.ENV) or next(iter(base.values()))
+        if isinstance(base, dict):      # TEST_URL = {管理端: url, 员工端: url}
+            return (base.get(getattr(setting, "DEFAULT_URL", "管理端"))
+                    or base.get("管理端") or next(iter(base.values())))
         return base
     except SystemExit:
         return "https://test-admin.gsrtech.com"
@@ -212,8 +213,23 @@ def main(argv):
     print(f"用例集：{suite}    项目：{project or '(取 .env 默认)'}    环境：{os.getenv('ENV', '测试环境')}")
     print("=" * 78)
 
+    import time as _time
+
     import pytest
+
+    from core.last_run import write_run
+    started_at = _time.time()
     code = pytest.main(build_args(suite, project, extra))
+
+    if suite == "api":
+        run_project = project or os.getenv("API_PROJECT", "")
+    elif suite == "ui":
+        run_project = project or os.getenv("UI_PROJECT", "")
+    else:
+        run_project = "api:%s / ui:%s" % (os.getenv("API_PROJECT", "-"), os.getenv("UI_PROJECT", "-"))
+    record = write_run(suite, run_project, os.getenv("ENV", "测试环境"), code, started_at)
+    print("[last_run] 已记录本次执行：%s（结果文件 %d 个）"
+          % (record.get("time"), len(record.get("results") or [])))
     if want_report:
         generate_report()
     return code

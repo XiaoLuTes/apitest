@@ -35,6 +35,8 @@
   `公共/测试数据.md`（环境账号、客户/供应商/员工、DB 常用表）、`<项目>/测试数据/README.md`（该项目单据号与造数口径）、`<项目>/接口文档|数据库表结构|需求文档/`
 - 测试环境：业务平台 `https://test-admin.gsrtech.com`；禅道 `http://172.21.100.100:8101/zentao`
 - 执行方式：`python run.py <子命令>`（在 `D:\lu\pycharm\autotest` 下执行）
+- 提单：只认**最近一次执行**的结果（`reports/last_run.json`，保鲜 24h，过期需重跑或 `--allow-stale`）；
+  模块按项目分流 payroll→`393` / 假勤→`392`
 
 ### 0.1 环境准备（首次使用 / 换机器时看）
 
@@ -205,6 +207,11 @@ python run.py ui  <项目名> --headless
 5. 先出**草稿**给用户确认，再 `--submit --yes`；不许直接提交。
 6. 同一错误指纹只提一次；已被提交过的用例不重复提。
 7. 单据正文格式只在 `tools/evidence_bug.py::build_steps_html()` 定义，不要在别处拼。
+8. **结果来源**：只认 `reports/last_run.json` 指向的本次执行结果，会打印「X 小时前」；
+   超过保鲜期（`ZENTAO_RESULT_MAX_AGE_HOURS`，默认 24h）直接拒绝 → 重跑或加 `--allow-stale`；
+   没有指针时退回按文件时间取最新并提示。
+9. **模块分流**：payroll→`393`（结算/收款）、假勤→`392`（考勤/假勤）；判定看
+   `last_run.project` + 结果文件名 + 失败用例名，可用 `--module <id>` 覆盖。
 
 
 ```powershell

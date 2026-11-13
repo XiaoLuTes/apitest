@@ -166,7 +166,7 @@ def write_draft(evidence, steps_html, title):
     return md
 
 
-def file_bug(evidence, submit=False, severity=3, pri=3, bug_type="codeerror"):
+def file_bug(evidence, submit=False, severity=3, pri=3, bug_type="codeerror", module=None):
     from core.zentao import ZentaoClient, ZentaoError
 
     title = build_title(evidence)
@@ -185,7 +185,7 @@ def file_bug(evidence, submit=False, severity=3, pri=3, bug_type="codeerror"):
         client.login()
         bug_id = client.create_bug(
             title=title, steps=steps_html, product=int(os.getenv("ZENTAO_PRODUCT", "1")),
-            module=int(os.getenv("ZENTAO_MODULE", "393")), severity=severity, pri=pri,
+            module=int(module or os.getenv("ZENTAO_MODULE", "393")), severity=severity, pri=pri,
             bug_type=bug_type, assigned_to=os.getenv("ZENTAO_ASSIGNEE", ""),
             feedback_by=os.getenv("ZENTAO_FEEDBACK", "") or client.account,
             opened_build=os.getenv("ZENTAO_OPENED_BUILD", "trunk"),
