@@ -140,7 +140,7 @@ test_cases:
   - step_name: 33、输入email正文
     element: email_template
     action: input
-    data: 'Hi Dear ${candidateName},
+    data: 'Hi Dear {{candidateName}},
 
       I hope this mail finds you well.
 
@@ -150,7 +150,7 @@ test_cases:
   - step_name: 34、输入email标题
     element: email_subject
     action: input
-    data: 岗位名称 ${candidateName} to 自动化{replace_num}
+    data: 岗位名称 {{candidateName}} to 自动化{replace_num}
     expected: true
   - step_name: 35、点击提交
     element: submit_confirm
@@ -351,7 +351,7 @@ test_cases:
   - step_name: 35、输入email正文
     element: email_template
     action: input
-    data: 'Hi Dear ${candidateName},
+    data: 'Hi Dear {{candidateName}},
 
       I hope this mail finds you well.
 
@@ -361,7 +361,7 @@ test_cases:
   - step_name: 36、输入email标题
     element: email_subject
     action: input
-    data: 岗位名称 ${candidateName} to 自动化{replace_num}
+    data: 岗位名称 {{candidateName}} to 自动化{replace_num}
     expected: true
   - step_name: 37、点击提交
     element: submit_confirm

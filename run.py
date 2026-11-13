@@ -107,6 +107,10 @@ def main(argv):
         # 用例静态检查（执行前的第一道机器初审）
         from tools.lint_cases import main as lint_main
         return lint_main(argv[1:])
+    if argv[0] == "zentao":
+        # 执行结果 → 禅道提单（默认只生成草稿）
+        from tools.zentao_report import main as zentao_main
+        return zentao_main(argv[1:])
 
     suite = argv[0].lower()
     if suite not in ("api", "ui", "all"):

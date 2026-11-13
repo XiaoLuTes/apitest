@@ -292,7 +292,7 @@ test_cases:
     action: wait
     data: '3'
   - step_name: 62、过保回访页点击提交
-    element: end_invoice_submit_2
+    element: after_onboarding_2
     action: click
     data: null
   - step_name: 63、验证流程实例状态为'结束'

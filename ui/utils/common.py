@@ -1,3 +1,5 @@
+import re
+
 import yaml
 from ui.utils.logger import logger
 
@@ -47,10 +49,24 @@ class VariableStore:
 
     @classmethod
     def render(cls, text):
-        """统一替换：把字符串中的 {变量名} 替换为变量值（变量不存在则替换为空串）"""
-        if isinstance(text, str):
-            for key, value in cls._vars.items():
-                text = text.replace(f'{{{key}}}', value)
+        """统一替换：把字符串中的 {变量名} 替换为变量值（变量不存在则替换为空串）
+
+        转义：写 {{变量名}} 会原样输出 {变量名}（用来输"页面本身要的大括号占位符"，
+        例如招聘平台的邮件模板占位符 {candidateName}，避免被当成框架变量替换掉）
+        """
+        if not isinstance(text, str):
+            return text
+        literals = []
+
+        def _keep(match):
+            literals.append("{" + match.group(1) + "}")
+            return f"\x00{len(literals) - 1}\x00"
+
+        text = re.sub(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}", _keep, text)
+        for key, value in cls._vars.items():
+            text = text.replace(f'{{{key}}}', value)
+        for index, literal in enumerate(literals):
+            text = text.replace(f"\x00{index}\x00", literal)
         return text
 
     @classmethod

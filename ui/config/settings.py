@@ -57,12 +57,14 @@ class Settings:
                 "ELEMENT_LOCATORS": "./config/locators/gsr_admin_page.yaml",
                 "description": "招聘平台新发起编制流程"
             },
-            "招聘平台新建岗位-维护版": {
-                "PAGE_NAME": ["login_page", "gsr_admin_page"],
-                "TESTCASES_PATH": "./testcases/pt_new_position_v2/pt_testcases_v2.yaml",
-                "ELEMENT_LOCATORS": "./config/locators/pt_new_position_v2.yaml",
-                "description": "招聘平台新建岗位全流程（维护版，重新采集元素）"
-            },
+            # 临时停用：用例文件 ui/testcases/pt_new_position_v2/pt_testcases_v2.yaml 不存在
+            # （lint 会报"用例文件不存在"）。补回该 yaml 后取消下面注释即可恢复。
+            # "招聘平台新建岗位-维护版": {
+            #     "PAGE_NAME": ["login_page", "gsr_admin_page"],
+            #     "TESTCASES_PATH": "./testcases/pt_new_position_v2/pt_testcases_v2.yaml",
+            #     "ELEMENT_LOCATORS": "./config/locators/pt_new_position_v2.yaml",
+            #     "description": "招聘平台新建岗位全流程（维护版，重新采集元素）"
+            # },
             "薪资包管理查询": {
                 "PAGE_NAME": ["payroll_package_page"],  # 页面对象
                 "TESTCASES_PATH": "./testcases/payroll_package/package_query.yaml",  # 测试用例路径

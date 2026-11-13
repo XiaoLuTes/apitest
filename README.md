@@ -154,11 +154,11 @@ python run.py ui 薪资包管理查询 --headed        # 有头（调试用，�
 | --- | --- | --- | --- |
 | 招聘平台新建岗位 | `pt_new_position/pt_testcases.yaml` | `new_position_element_locators.yaml` | 非 EOR 岗位全流程 |
 | 招聘平台新建编制 | `pt_new_preparation/new_preparation.yaml` | `gsr_admin_page.yaml` | 编制流程 |
-| 招聘平台新建岗位-维护版 | `pt_new_position_v2/pt_testcases_v2.yaml`（**文件缺失，lint 报错**） | `pt_new_position_v2.yaml` | 重新采集元素版 |
 | **薪资包管理查询** | `payroll_package/package_query.yaml` | `payroll_package_management.yaml` | 按薪资包ID查询：命中字段校验 / 不存在为空 / 重置恢复（3 条） |
 | 薪资结算包收款包链路 | `eor_salary_ettlement/salary_payment_collection_v2.yaml` | `gsr_admin_page_management.yaml` | 结算包收款包链路 |
 
-> 用例总数以 `python run.py lint` 的统计为准（当前 17 个文件、817 条）。
+> 项目「招聘平台新建岗位-维护版」已**临时停用**：它指向的 `ui/testcases/pt_new_position_v2/pt_testcases_v2.yaml` 不存在（lint 会报错），补回该文件后取消 `ui/config/settings.py` 里的注释即可恢复。
+> 用例总数以 `python run.py lint` 的统计为准（当前 16 个文件、817 条、0 错误）。
 
 ---
 
@@ -295,20 +295,75 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 
 ---
 
-## 10. 已知问题 / 环境注意
+## 10. 禅道提单（执行结果 → 缺陷）
+
+已经封成框架能力，**配置全放 `.env`，代码只写一次**：
+
+| 文件 | 作用 |
+| --- | --- |
+| `core/zentao.py` | 禅道客户端（v18+ REST 优先，自动回落老版本 `api.php` 会话） |
+| `tools/zentao_report.py` | 读执行结果 → 聚合失败 → 生成草稿 / 提交 |
+| `run.py zentao ...` | 命令行入口 |
+
+```powershell
+python run.py zentao --probe                 # 探测：登录态、当前用户、产品/模块/用户端点是否可用
+python run.py zentao                         # 取最近一次执行结果 → 生成提单草稿（不提交）
+python run.py zentao --from reports/results/api/xxx.xlsx
+python run.py zentao --product 3 --module 12 --assignee zhangsan --severity 2 --pri 2
+python run.py zentao --submit --yes           # 真正提交（需要 .env 配置齐全）
+```
+
+行为约定：
+
+- **默认只出草稿**：`reports/zentao/draft_<时间戳>.md` + `.xlsx`，你核对后再说提交。
+- **同根因聚合**：错误文本抹掉数字/id/时间戳后做指纹，一条根因只出一条缺陷（备注里列出合并的用例）。
+- **安全闸**：必须 `--yes` 或 `.env` 的 `ZENTAO_AUTO_SUBMIT=true` 才会真的调接口提单。
+- **不依赖禅道也能用**：没配禅道时草稿照样生成，草稿里的标题/重现步骤可以直接手工贴进禅道。
+
+### 需要提供的配置（`.env`）
+
+| 键 | 说明 | 必填 |
+| --- | --- | --- |
+| `ZENTAO_URL` | 禅道根地址，**不要带 `/api.php`**（如 `https://zentao.example.com`） | 是 |
+| `ZENTAO_ACCOUNT` / `ZENTAO_PASSWORD` | 账号密码（建议专用机器人账号，需"提Bug"权限） | 与 token 二选一 |
+| `ZENTAO_TOKEN` | 已有 token 时直接填，免登录 | 与账号密码二选一 |
+| `ZENTAO_PRODUCT` | 产品 id（`--probe` 会列出来） | 提单必填 |
+| `ZENTAO_MODULE` | 模块 id（0 = 根模块） | 可选 |
+| `ZENTAO_ASSIGNEE` | 默认指派给（禅道账号名，不是姓名） | 可选 |
+| `ZENTAO_SEVERITY` / `ZENTAO_PRI` | 严重程度 / 优先级，1~4（1 最高） | 可选（默认 3） |
+| `ZENTAO_TYPE` | 缺陷类型：`codeerror` / `performance` / `standard` / `automation` / `others` | 可选 |
+| `ZENTAO_OPENED_BUILD` | 影响版本 id，留空用 `trunk` | 可选 |
+| `ZENTAO_VERIFY_SSL` | 自签证书环境设 `false` | 可选 |
+| `ZENTAO_AUTO_SUBMIT` | 是否允许免 `--yes` 自动提交（默认 `false`） | 可选 |
+
+### 在代码里当方法用
+
+```python
+from core.zentao import ZentaoClient
+
+zt = ZentaoClient.from_env()
+zt.whoami()                      # 连通性 + 身份
+zt.products()                    # → [{'id': 3, 'name': '...'}, ...]
+zt.modules(3)                     # → 模块树
+zt.create_bug(title="[自动化] xxx 失败", steps="重现步骤...", product=3, module=12,
+              severity=2, pri=2, assigned_to="zhangsan", attachments=["reports/xxx.xlsx"])
+```
+
+## 11. 已知问题 / 环境注意
 
 1. **权限缓存问题**：新扫码会话调 `center:payrollSalaryPackage:list` 返回 `110106 没有访问权限`，`.env` 里的旧 token 正常 → 疑似权限缓存未刷新（建议提单）。
 2. **错误 token 返回 500**：`Authorization: Bearer <乱码>` 返回 `{"code":500,"msg":"Internal Server Error"}`，正常应为 401。
-3. **UI 侧存量用例有 3 类问题**（lint 报 6 个错误，均未修，等确认）：
-   - `pt_testcases.yaml` 4 处用了接口侧写法 `${candidateName}`（UI 只认 `{变量}`），且该变量从未定义；
-   - `new_preparation.yaml` 步骤 element `end_invoice_submit_2` 在定位器里不存在（只有 `end_invoice_submit`）；
-   - 项目「招聘平台新建岗位-维护版」指向的 `pt_testcases_v2.yaml` 文件不存在。
+3. **UI 侧存量用例的 3 类问题已修复**（本次）：
+   - `pt_testcases.yaml` 的 `${candidateName}` → `{{candidateName}}`（新增 `{{变量}}` 转义语法：原样输出 `{变量}` 字面量，不会被框架替换）；
+   - `new_preparation.yaml` 的 element `end_invoice_submit_2` → `after_onboarding_2`（过保回访页提交）；
+   - 项目「招聘平台新建岗位-维护版」指向的 yaml 不存在 → 已临时注释停用。
+   > 这三处如需回归验证，得跑对应的招聘平台全流程（会真实新建岗位/编制）。
 4. **token 约 2 小时过期**，需要定期更新 `.env`（或跑一次有头 UI 用例扫码刷新）。
 5. `test_test.xlsx`（调试项目）里有空行/空 sheet，lint 会告警，不影响其它项目。
 
 ---
 
-## 11. 新增内容的约定
+## 12. 新增内容的约定
 
 **新增接口用例集**：Excel 放 `api/testcase/` → 在 `api/config/setting.py` 的 `TEST_FLIELOADS` 加一行 → `python run.py lint --project <名>` → `python run.py api <名>`。
 
@@ -320,7 +375,7 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 
 ---
 
-## 12. 变更记录
+## 13. 变更记录
 
 | 提交 | 内容 |
 | --- | --- |
@@ -328,5 +383,6 @@ page.get_total_text()                                 # 第 1-1 条/总共 1 条
 | `5c294ce` | 新增 `tools/lint_cases.py` + `selftest_lint.py`（用例静态检查，动作集合反射源码） |
 | `e4da02a` | 薪资包管理按薪资包ID查询：接口方法 + `pkgquery` 动作 + UI 页面对象/定位器/用例 + UI 免扫码 token 注入 + `tools/ui_capture.py` |
 | `6a2b22a` | 支持 PyCharm 子目录直接运行（sys.path 引导）；修正采集工具多级菜单导航 |
+| `本次提交` | UI 存量 3 类问题修复（`${var}` → `{{var}}` 转义、`end_invoice_submit_2` → `after_onboarding_2`、维护版项目停用），lint 全量 **0 错误**；新增禅道提单能力：`core/zentao.py`（客户端）+ `tools/zentao_report.py`（失败聚合/草稿/提交）+ `run.py zentao` 子命令 |
 
 > 原始两个框架（`D:\lu\pycharm\api`、`D:\lu\pycharm\ui_playwright`）保持原样，可继续单独使用。

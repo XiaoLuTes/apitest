@@ -712,6 +712,8 @@ def lint_ui_file(path, settings, collector):
                                 f"{label} 用了接口侧写法 ${{{var}}}（UI 用例只认 {{{var}}}，执行时会残留 $ 并拼进输入）",
                                 **step_ctx)
             scan_text = re.sub(r"\$\{[A-Za-z_][A-Za-z0-9_]*\}", " ", scan_text)
+            # {{var}} 是转义写法（原样输出 {var} 字面量），不参与"变量未定义"检查
+            scan_text = re.sub(r"\{\{[A-Za-z_][A-Za-z0-9_]*\}\}", " ", scan_text)
             # ② 普通 {var}
             for var in UI_VAR_RE.findall(scan_text):
                 if var not in available_vars:
